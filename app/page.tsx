@@ -68,8 +68,7 @@ export default function HomePage() {
   useEffect(() => {
     const lenis = new Lenis({
       lerp: 0.08,
-      smoothWheel: true,
-      smoothTouch: false
+      wheelMultiplier: 1,
     });
 
     lenis.on("scroll", ({ scroll }) => {
