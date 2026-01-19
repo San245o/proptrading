@@ -141,7 +141,7 @@ export default function HomePage() {
               HELIX
             </span>
           </div>
-          <nav className="glass-pill flex items-center gap-6 rounded-full px-6 py-3 text-sm text-white/80 shadow-glass">
+          <nav className="glass-pill hidden items-center gap-6 rounded-full px-6 py-3 text-sm text-white/80 shadow-glass md:flex">
             <a className="transition hover:text-white" href="#how-it-works">
               How it Works
             </a>
@@ -155,20 +155,23 @@ export default function HomePage() {
               Launch
             </button>
           </nav>
+          <button className="glass-pill rounded-full px-4 py-2 text-sm font-semibold text-white md:hidden">
+            Launch
+          </button>
         </div>
       </header>
 
       {/* Hero Section */}
       <section className="relative z-10 h-[400vh]">
         <div className="sticky top-0 flex h-screen w-full items-center overflow-hidden">
-          <div className="mx-auto flex h-full w-full max-w-6xl flex-col justify-center px-6 lg:flex-row lg:items-center">
+          <div className="mx-auto flex h-full w-full max-w-6xl flex-col justify-center gap-8 px-6 pt-20 lg:flex-row lg:items-center lg:pt-0">
             {/* Left Content */}
-            <div className="flex-1 space-y-8">
+            <div className="flex-1 space-y-6 lg:space-y-8">
               <div>
-                <div className="glass-pill inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/70">
+                <div className="glass-pill inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-white/70 lg:px-4 lg:py-2 lg:text-xs">
                   Guided sequence trading
                 </div>
-                <h1 className="mt-6 text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+                <h1 className="mt-4 text-3xl font-semibold leading-tight text-white sm:text-5xl lg:mt-6 lg:text-6xl">
                   Own the tape with a
                   <span className="gradient-text"> prop firm</span>
                   <br />
@@ -177,7 +180,7 @@ export default function HomePage() {
               </div>
 
               {/* Dynamic Text Point */}
-              <div className="relative h-32">
+              <div className="relative h-24 lg:h-32">
                 {POINTS.map((point, i) => (
                   <div
                     key={point.title}
@@ -187,19 +190,21 @@ export default function HomePage() {
                         : "translate-y-4 opacity-0"
                     }`}
                   >
-                    <h3 className="text-2xl font-bold text-white">
+                    <h3 className="text-xl font-bold text-white lg:text-2xl">
                       {point.title}
                     </h3>
-                    <p className="mt-2 text-lg text-white/70">{point.body}</p>
+                    <p className="mt-2 text-base text-white/70 lg:text-lg">
+                      {point.body}
+                    </p>
                   </div>
                 ))}
               </div>
 
-              <div className="flex flex-wrap gap-4">
-                <button className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-ink transition hover:bg-white/90">
+              <div className="flex flex-wrap gap-3 lg:gap-4">
+                <button className="rounded-full bg-white px-5 py-2.5 text-xs font-semibold text-ink transition hover:bg-white/90 lg:px-6 lg:py-3 lg:text-sm">
                   Start evaluation
                 </button>
-                <button className="rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white/80 transition hover:border-white/60 hover:text-white">
+                <button className="rounded-full border border-white/30 px-5 py-2.5 text-xs font-semibold text-white/80 transition hover:border-white/60 hover:text-white lg:px-6 lg:py-3 lg:text-sm">
                   View plans
                 </button>
               </div>
@@ -207,7 +212,7 @@ export default function HomePage() {
 
             {/* Right Content - Sequence */}
             <div className="flex flex-1 items-center justify-center lg:justify-end">
-              <div className="-mt-12 w-full max-w-lg lg:mt-[-10vh]">
+              <div className="mt-4 w-full max-w-sm lg:mt-[-10vh] lg:max-w-lg">
                 <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-2xl">
                   <img
                     src={`/api/sequence/${frameList[frameIndex]}`}
