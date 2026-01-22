@@ -1,33 +1,97 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import Lenis from "lenis";
+import { useEffect, useState } from "react";
 
-const HERO_CYCLING_TEXT = [
-  "Indian Equities",
-  "F&O Markets", 
-  "Real Capital",
-  "Your Skills"
-];
+// Floating Card Component with staggered fade-in animation
+function FloatingCard({ 
+  children, 
+  className = "", 
+  delay = 0,
+  rotate = "0deg"
+}: { 
+  children: React.ReactNode; 
+  className?: string;
+  delay?: number;
+  rotate?: string;
+}) {
+  const [isVisible, setIsVisible] = useState(false);
 
-const POINTS = [
-  {
-    title: "No Time Limits",
-    body: "Trade at your own pace with no minimum trading days required."
-  },
-  {
-    title: "Clear Rules",
-    body: "Transparent risk parameters and straightforward evaluation criteria."
-  },
-  {
-    title: "80% Profit Split",
-    body: "Keep the majority of your profits with bi-weekly payouts."
-  },
-  {
-    title: "Scaling Plan",
-    body: "Grow your account up to ₹1 Crore based on consistent performance."
-  }
-];
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), delay);
+    return () => clearTimeout(timer);
+  }, [delay]);
+
+  return (
+    <div 
+      className={`transition-all duration-700 ease-out ${className} ${
+        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+      }`}
+      style={{ transform: `rotate(${rotate})` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// Mini Chart Component for Dashboard Cards
+function MiniLineChart() {
+  return (
+    <svg viewBox="0 0 100 40" className="h-full w-full">
+      <defs>
+        <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M 0 35 Q 15 30, 25 25 T 50 20 T 75 12 T 100 8"
+        fill="none"
+        stroke="#10b981"
+        strokeWidth="2"
+      />
+      <path
+        d="M 0 35 Q 15 30, 25 25 T 50 20 T 75 12 T 100 8 L 100 40 L 0 40 Z"
+        fill="url(#chartGradient)"
+      />
+    </svg>
+  );
+}
+
+// Mini Bar Chart Component
+function MiniBarChart() {
+  const bars = [40, 65, 45, 80, 55, 90, 70];
+  return (
+    <div className="flex h-full items-end gap-1">
+      {bars.map((height, i) => (
+        <div 
+          key={i}
+          className="flex-1 rounded-t bg-emerald-500/80"
+          style={{ height: `${height}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Donut Chart Component
+function DonutChart() {
+  return (
+    <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
+      <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1f2937" strokeWidth="3" />
+      <circle 
+        cx="18" cy="18" r="15.9" fill="none" 
+        stroke="#10b981" strokeWidth="3" 
+        strokeDasharray="75 25"
+      />
+      <circle 
+        cx="18" cy="18" r="15.9" fill="none" 
+        stroke="#3b82f6" strokeWidth="3" 
+        strokeDasharray="20 80"
+        strokeDashoffset="-75"
+      />
+    </svg>
+  );
+}
 
 const STEPS = [
   {
@@ -133,143 +197,9 @@ const GUIDELINES = [
   },
 ];
 
-const HIGHLIGHTS = [
-  {
-    title: "15% Performance Reward",
-    description: "The only trading prop firm that offers a 15% performance reward from the Challenge Phase rewards.",
-    icon: (
-      <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-      </svg>
-    )
-  },
-  {
-    title: "No Time Limits",
-    description: "HELIX puts traders in control, providing full trading freedom with no time limits to worry about.",
-    icon: (
-      <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    )
-  },
-  {
-    title: "Daily News Trading",
-    description: "Make rewards quickly by utilizing big market movements when a high-impact news is announced.",
-    icon: (
-      <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-      </svg>
-    )
-  },
-  {
-    title: "Competitive Spreads",
-    description: "With spreads starting from 0.0 pips and a leverage of up to 1:100, unmatched trading experience.",
-    icon: (
-      <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-    )
-  },
-  {
-    title: "Reset",
-    description: "Reset your account to restart your trading journey, even if you've violated any rules.",
-    icon: (
-      <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-      </svg>
-    )
-  },
-  {
-    title: "Monthly Competition",
-    description: "FundedNext hosts free monthly competitions where you can compete for exclusive rewards.",
-    icon: (
-      <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-      </svg>
-    )
-  }
-];
-
 export default function HomePage() {
-  const [progress, setProgress] = useState(0);
-  const [frameIndex, setFrameIndex] = useState(0);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [cyclingIndex, setCyclingIndex] = useState(0);
   const [openAccordion, setOpenAccordion] = useState<number | null>(null);
   const [selectedAccount, setSelectedAccount] = useState("500000");
-  const frameCount = 40;
-  const frameList = useMemo(
-    () =>
-      Array.from({ length: frameCount }, (_, index) => {
-        const padded = String(index + 1).padStart(3, "0");
-        return `ezgif-frame-${padded}.jpg`;
-      }),
-    []
-  );
-
-  const imagesRef = useRef<HTMLImageElement[]>([]);
-
-  useEffect(() => {
-    const lenis = new Lenis({
-      lerp: 0.08,
-      wheelMultiplier: 1,
-    });
-
-    lenis.on("scroll", ({ scroll }) => {
-      // Hero is 400vh -> ~4 * window.innerHeight
-      const heroHeight = window.innerHeight * 4;
-      // Clamp scroll to hero section
-      const heroScroll = Math.min(scroll, heroHeight);
-      const nextProgress =
-        heroHeight === 0 ? 0 : Math.min(1, heroScroll / heroHeight);
-
-      setProgress(nextProgress);
-      const nextFrame = Math.min(
-        frameCount - 1,
-        Math.floor(nextProgress * (frameCount - 1))
-      );
-      setFrameIndex(nextFrame);
-    });
-
-    const raf = (time: number) => {
-      lenis.raf(time);
-      requestAnimationFrame(raf);
-    };
-
-    requestAnimationFrame(raf);
-    return () => {
-      lenis.destroy();
-    };
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCyclingIndex((prev) => (prev + 1) % HERO_CYCLING_TEXT.length);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    let loaded = 0;
-    imagesRef.current = frameList.map((frame) => {
-      const img = new Image();
-      img.src = `/api/sequence/${frame}`;
-      img.onload = () => {
-        loaded += 1;
-        if (loaded === frameCount) {
-          setIsLoaded(true);
-        }
-      };
-      return img;
-    });
-  }, [frameList]);
-
-  // Determine active point index based on progress (0 to 1)
-  // Divide progress into equal segments for the points
-  const activeIndex = Math.min(
-    POINTS.length - 1,
-    Math.floor(progress * POINTS.length)
-  );
 
   return (
     <div className="relative min-h-screen w-full">
@@ -317,101 +247,158 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative z-10 h-[400vh]">
-        <div className="sticky top-0 flex h-screen w-full items-center overflow-hidden">
-          <div className="mx-auto flex h-full w-full max-w-6xl flex-col justify-center gap-4 px-6 pt-20 lg:flex-row lg:items-center lg:gap-8 lg:pt-0">
-            {/* Left Content */}
-            <div className="flex-1 space-y-4 lg:space-y-6">
-              <div>
-                <h1 className="text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
-                  Prove Your
-                  <br />
-                  Trading Skill.
-                </h1>
-                <div className="relative mt-3 h-14 overflow-hidden lg:h-16">
-                  {HERO_CYCLING_TEXT.map((text, i) => (
-                    <span
-                      key={text}
-                      className={`absolute left-0 top-0 text-3xl font-bold transition-all duration-700 ease-out sm:text-4xl lg:text-5xl ${
-                        i === cyclingIndex
-                          ? "translate-y-0 opacity-100"
-                          : i === (cyclingIndex - 1 + HERO_CYCLING_TEXT.length) % HERO_CYCLING_TEXT.length
-                          ? "-translate-y-full opacity-0"
-                          : "translate-y-full opacity-0"
-                      }`}
-                      style={{
-                        background: "linear-gradient(135deg, #10b981 0%, #34d399 50%, #6ee7b7 100%)",
-                        WebkitBackgroundClip: "text",
-                        WebkitTextFillColor: "transparent",
-                        backgroundClip: "text"
-                      }}
-                    >
-                      {text}.
-                    </span>
-                  ))}
-                </div>
-                <p className="mt-4 max-w-lg text-base text-white/60 lg:text-lg">
-                  Access capital through a transparent, simulation-based proprietary trading program. 
-                  No time limits. Clear rules. Performance-based rewards.
-                </p>
-              </div>
+      {/* Hero Section - New Design */}
+      <section className="relative z-10 min-h-screen overflow-hidden">
+        <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 pt-32 lg:flex-row lg:items-center lg:pt-20">
+          {/* Left Content */}
+          <div className="flex-1 space-y-8">
+            {/* Badge */}
 
-              {/* Dynamic Text Point */}
-              <div className="relative h-24 lg:h-28">
-                {POINTS.map((point, i) => (
-                  <div
-                    key={point.title}
-                    className={`absolute left-0 top-0 w-full transition-all duration-500 ${
-                      i === activeIndex
-                        ? "translate-y-0 opacity-100 blur-0"
-                        : "translate-y-8 opacity-0 blur-sm"
-                    }`}
-                  >
-                    <h3 className="text-xl font-bold text-white lg:text-2xl">
-                      {point.title}
-                    </h3>
-                    <p className="mt-1 text-base text-white/70 lg:text-lg">
-                      {point.body}
-                    </p>
-                  </div>
-                ))}
-              </div>
+            {/* Headline */}
+            <FloatingCard delay={300}>
+              <h1 className="text-5xl font-bold leading-[1.1] tracking-tight text-white sm:text-6xl lg:text-7xl">
+                Built to Fund
+                <br />
+                <span className="italic text-emerald-400">Skilled Traders</span>
+              </h1>
+            </FloatingCard>
 
-              <div className="flex flex-wrap gap-3 lg:gap-4">
-                <button className="group flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-xs font-semibold text-white transition-all duration-300 hover:bg-emerald-600 active:scale-95 lg:px-6 lg:py-3 lg:text-sm">
+            {/* Description */}
+            <FloatingCard delay={500}>
+              <p className="max-w-lg text-lg leading-relaxed text-white/60">
+                Access up to ₹1 Crore in trading capital through our transparent, 
+                simulation-based evaluation. No time limits. Clear rules. 
+                80% profit split.
+              </p>
+            </FloatingCard>
+
+            {/* CTA Button */}
+            <FloatingCard delay={700}>
+              <div className="flex flex-wrap items-center gap-6">
+                <button className="group flex items-center gap-3 rounded-xl bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:bg-emerald-600 active:scale-95">
                   Start Challenge
-                  <svg
-                    className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
+                  <svg className="h-5 w-5 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
                 </button>
-                <button className="group flex items-center gap-2 rounded-xl border border-white/30 px-5 py-2.5 text-xs font-semibold text-white/80 transition-all duration-300 hover:border-white hover:bg-white/10 hover:text-white active:scale-95 lg:px-6 lg:py-3 lg:text-sm">
-                  View Pricing
-                </button>
               </div>
-            </div>
+            </FloatingCard>
 
-            {/* Right Content - Sequence */}
-            <div className="flex flex-1 items-center justify-center lg:justify-end">
-              <div className="mt-0 w-full max-w-sm lg:mt-[-10vh] lg:max-w-lg">
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-2xl">
-                  <img
-                    src={`/api/sequence/${frameList[frameIndex]}`}
-                    alt="Trading sequence"
-                    className={`h-full w-full object-cover transition-opacity duration-500 ${
-                      isLoaded ? "opacity-100" : "opacity-0"
-                    }`}
-                  />
+            {/* Trust Signal */}
+          </div>
+
+          {/* Right Content - Floating Dashboard Cards */}
+          <div className="relative mt-4 flex-1 lg:-mt-24">
+            <div className="relative h-[420px] w-full lg:h-[480px]">
+              {/* Main Dashboard Card */}
+              <FloatingCard 
+                delay={200} 
+                className="absolute left-1/2 top-[45%] z-20 w-[280px] -translate-x-1/2 -translate-y-1/2 lg:left-[40%] lg:w-[340px]"
+                rotate="-3deg"
+              >
+                <div className="overflow-hidden rounded-2xl border border-white/20 p-5 shadow-2xl backdrop-blur-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+                  {/* Card Header */}
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-medium text-white/50">Total P&L</span>
+                      <span className="text-xs text-emerald-400">Live</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <span className="h-2 w-2 rounded-full bg-white/20" />
+                      <span className="h-2 w-2 rounded-full bg-white/20" />
+                      <span className="h-2 w-2 rounded-full bg-white/20" />
+                    </div>
+                  </div>
+                  {/* P&L Value */}
+                  <div className="mb-1">
+                    <span className="text-3xl font-bold text-white">₹4,82,350</span>
+                  </div>
+                  <div className="mb-5 flex items-center gap-2">
+                    <span className="flex items-center text-sm font-medium text-emerald-400">
+                      <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                      </svg>
+                      +12.4%
+                    </span>
+                    <span className="text-xs text-white/40">this month</span>
+                  </div>
+                  {/* Chart */}
+                  <div className="h-24">
+                    <MiniLineChart />
+                  </div>
                 </div>
-              </div>
+              </FloatingCard>
+
+              {/* Top Right Card - Donut Chart */}
+              <FloatingCard 
+                delay={400} 
+                className="absolute right-8 top-12 z-30 w-[140px] lg:right-10 lg:top-12 lg:w-[160px]"
+                rotate="8deg"
+              >
+                <div className="overflow-hidden rounded-xl border border-white/20 p-4 shadow-xl backdrop-blur-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+                  <div className="mb-2 text-xs font-medium text-white/50">Win Rate</div>
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12">
+                      <DonutChart />
+                    </div>
+                    <div>
+                      <div className="text-xl font-bold text-white">75%</div>
+                      <div className="text-[10px] text-emerald-400">+5% ↑</div>
+                    </div>
+                  </div>
+                </div>
+              </FloatingCard>
+
+              {/* Bottom Card - Bar Chart */}
+              <FloatingCard 
+                delay={600} 
+                className="absolute bottom-20 left-4 z-30 w-[180px] lg:bottom-16 lg:left-0 lg:w-[200px]"
+                rotate="-6deg"
+              >
+                <div className="overflow-hidden rounded-xl border border-white/20 p-4 shadow-xl backdrop-blur-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-medium text-white/50">Weekly Trades</span>
+                    <span className="text-xs text-white/30">Jan 2026</span>
+                  </div>
+                  <div className="h-16">
+                    <MiniBarChart />
+                  </div>
+                </div>
+              </FloatingCard>
+
+              {/* Floating Stats Badge */}
+              <FloatingCard 
+                delay={800} 
+                className="absolute bottom-4 right-4 z-30 lg:bottom-8 lg:right-8"
+                rotate="4deg"
+              >
+                <div className="flex items-center gap-3 rounded-2xl border border-white/20 px-4 py-3 shadow-lg backdrop-blur-xl" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0.05) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/30">
+                    <svg className="h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-white">₹1Cr+</div>
+                    <div className="text-[10px] text-white/40">Capital Deployed</div>
+                  </div>
+                </div>
+              </FloatingCard>
             </div>
           </div>
         </div>
+
+        {/* Bottom Partner Logos */}
+        <FloatingCard delay={0} className="absolute bottom-8 left-0 right-0">
+          <div className="mx-auto max-w-4xl px-6">
+            <p className="mb-6 text-center text-xs text-white/30">Trusted by traders across India</p>
+            <div className="flex flex-wrap items-center justify-center gap-8 opacity-40 grayscale lg:gap-16">
+              {['NSE', 'BSE', 'SEBI Registered', 'ISO Certified', 'SSL Secured'].map((partner) => (
+                <span key={partner} className="text-sm font-medium text-white/60">{partner}</span>
+              ))}
+            </div>
+          </div>
+        </FloatingCard>
       </section>
 
       {/* How it Works Section */}
@@ -578,10 +565,11 @@ export default function HomePage() {
             <p className="mt-3 text-sm text-white/50">Industry-Standard Platforms</p>
           </div>
         </div>
+
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="relative z-10 w-full py-16 lg:py-24">
+      <section id="pricing" className="relative z-10 w-full py-20 lg:py-32">
         <div className="mx-auto max-w-5xl px-6">
           <div className="mb-12 text-center">
             <h2 className="text-4xl font-bold text-white md:text-5xl">
@@ -600,7 +588,7 @@ export default function HomePage() {
                 onClick={() => setSelectedAccount(account.value)}
                 className={`relative rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
                   selectedAccount === account.value
-                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30"
+                    ? "bg-emerald-500 text-white"
                     : "text-white/70 hover:bg-white/10 hover:text-white"
                 }`}
               >
