@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+
+// Tooltip descriptions for pricing table
+const PRICING_TOOLTIPS: Record<string, string> = {
+  profitShare: "The percentage of profits you keep from your funded account. You earn 80% of all profits generated.",
+  profitTarget: "The profit goal you need to achieve to pass the evaluation and get funded.",
+  step2Goal: "The profit target for Step 2 in the 2-Step evaluation model.",
+  dailyLoss: "Maximum loss allowed in a single trading day. Exceeding this limit will breach your account.",
+  maxDrawdown: "Maximum overall loss allowed from your peak balance. This protects your account from excessive losses."
+};
 
 // Floating Card Component with staggered fade-in animation
 function FloatingCard({ 
@@ -200,6 +210,7 @@ const GUIDELINES = [
 export default function HomePage() {
   const [openAccordion, setOpenAccordion] = useState<number | null>(null);
   const [selectedAccount, setSelectedAccount] = useState("500000");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="relative min-h-screen w-full">
@@ -219,11 +230,11 @@ export default function HomePage() {
 
       <header className="fixed top-6 z-50 flex w-full justify-center px-6">
         <div className="flex w-full max-w-6xl items-center justify-between">
-          <div className="glass-pill flex items-center gap-3 rounded-full px-5 py-3 shadow-glass">
+          <Link href="/" className="glass-pill flex items-center gap-3 rounded-full px-5 py-3 shadow-glass">
             <span className="text-sm font-bold tracking-wide text-white">
               PROP INDIA
             </span>
-          </div>
+          </Link>
           <nav className="glass-pill hidden items-center gap-6 rounded-full px-6 py-3 text-sm text-white/80 shadow-glass md:flex">
             <a className="transition hover:text-white" href="#how-it-works">
               How it Works
@@ -237,15 +248,71 @@ export default function HomePage() {
             <a className="transition hover:text-white" href="#faq">
               FAQ
             </a>
-            <button className="rounded-full bg-emerald-500 px-4 py-2 text-white transition hover:bg-emerald-600">
+            <Link href="/login" className="rounded-full bg-emerald-500 px-4 py-2 text-white transition hover:bg-emerald-600">
               Get Started
-            </button>
+            </Link>
           </nav>
-          <button className="glass-pill rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white md:hidden">
-            Start
+          {/* Hamburger Menu Button for Mobile */}
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="glass-pill flex h-11 w-11 items-center justify-center rounded-full text-white md:hidden"
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
           </button>
         </div>
       </header>
+
+      {/* Mobile Menu Dropdown */}
+      <div className={`fixed inset-x-0 top-20 z-40 px-6 transition-all duration-300 md:hidden ${
+        mobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"
+      }`}>
+        <nav className="glass-pill flex flex-col gap-2 rounded-2xl p-4 shadow-glass">
+          <a 
+            href="#how-it-works" 
+            onClick={() => setMobileMenuOpen(false)}
+            className="rounded-xl px-4 py-3 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+          >
+            How it Works
+          </a>
+          <a 
+            href="#features" 
+            onClick={() => setMobileMenuOpen(false)}
+            className="rounded-xl px-4 py-3 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+          >
+            Features
+          </a>
+          <a 
+            href="#pricing" 
+            onClick={() => setMobileMenuOpen(false)}
+            className="rounded-xl px-4 py-3 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+          >
+            Pricing
+          </a>
+          <a 
+            href="#faq" 
+            onClick={() => setMobileMenuOpen(false)}
+            className="rounded-xl px-4 py-3 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+          >
+            FAQ
+          </a>
+          <Link 
+            href="/login" 
+            onClick={() => setMobileMenuOpen(false)}
+            className="mt-2 rounded-xl bg-emerald-500 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-emerald-600"
+          >
+            Get Started
+          </Link>
+        </nav>
+      </div>
 
       {/* Hero Section - New Design */}
       <section className="relative z-10 min-h-screen overflow-hidden">
@@ -275,12 +342,15 @@ export default function HomePage() {
             {/* CTA Button */}
             <FloatingCard delay={700}>
               <div className="flex flex-wrap items-center gap-6">
-                <button className="group flex items-center gap-3 rounded-xl bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:bg-emerald-600 active:scale-95">
+                <Link 
+                  href="/login"
+                  className="group flex items-center gap-3 rounded-xl bg-emerald-500 px-8 py-4 text-base font-semibold text-white transition-all duration-300 hover:bg-emerald-600 active:scale-95"
+                >
                   Start Challenge
                   <svg className="h-5 w-5 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
-                </button>
+                </Link>
               </div>
             </FloatingCard>
 
@@ -288,12 +358,12 @@ export default function HomePage() {
           </div>
 
           {/* Right Content - Floating Dashboard Cards */}
-          <div className="relative mt-4 flex-1 lg:-mt-24">
-            <div className="relative h-[420px] w-full lg:h-[480px]">
+          <div className="relative mt-8 flex-1 lg:-mt-24">
+            <div className="relative mx-auto h-[350px] w-full max-w-[400px] sm:h-[420px] lg:mx-0 lg:h-[480px] lg:max-w-none">
               {/* Main Dashboard Card */}
               <FloatingCard 
                 delay={200} 
-                className="absolute left-1/2 top-[45%] z-20 w-[280px] -translate-x-1/2 -translate-y-1/2 lg:left-[40%] lg:w-[340px]"
+                className="absolute left-1/2 top-[45%] z-20 w-[260px] -translate-x-1/2 -translate-y-1/2 sm:w-[280px] lg:left-[40%] lg:w-[340px]"
                 rotate="-3deg"
               >
                 <div className="overflow-hidden rounded-2xl border border-white/20 p-5 shadow-2xl backdrop-blur-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
@@ -329,21 +399,49 @@ export default function HomePage() {
                 </div>
               </FloatingCard>
 
-              {/* Top Right Card - Donut Chart */}
+              {/* Top Right Card - Trading Stats */}
               <FloatingCard 
                 delay={400} 
-                className="absolute right-8 top-12 z-30 w-[140px] lg:right-10 lg:top-12 lg:w-[160px]"
-                rotate="8deg"
+                className="absolute left-0 top-0 z-30 w-[180px] sm:right-4 sm:top-8 sm:w-[200px] lg:right-8 lg:top-4 lg:w-[220px]"
+                rotate="-2deg"
               >
-                <div className="overflow-hidden rounded-xl border border-white/20 p-4 shadow-xl backdrop-blur-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
-                  <div className="mb-2 text-xs font-medium text-white/50">Win Rate</div>
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12">
-                      <DonutChart />
+                <div className="overflow-hidden rounded-xl border border-white/20 p-4 shadow-xl backdrop-blur-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Win Rate */}
+                    <div className="rounded-lg bg-white/5 p-2.5">
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <div className="h-6 w-6">
+                          <DonutChart />
+                        </div>
+                        <span className="text-[10px] text-white/40">Win Rate</span>
+                      </div>
+                      <div className="text-lg font-bold text-white">75%</div>
                     </div>
-                    <div>
-                      <div className="text-xl font-bold text-white">75%</div>
-                      <div className="text-[10px] text-emerald-400">+5% ↑</div>
+                    {/* Profit */}
+                    <div className="rounded-lg bg-white/5 p-2.5">
+                      <div className="mb-1 text-[10px] text-white/40">Profit</div>
+                      <div className="text-lg font-bold text-emerald-400">₹48K</div>
+                    </div>
+                    {/* Target */}
+                    <div className="rounded-lg bg-white/5 p-2.5">
+                      <div className="mb-1 text-[10px] text-white/40">Target</div>
+                      <div className="text-lg font-bold text-white">₹50K</div>
+                    </div>
+                    {/* Trades */}
+                    <div className="rounded-lg bg-white/5 p-2.5">
+                      <div className="mb-1 text-[10px] text-white/40">Trades</div>
+                      <div className="text-lg font-bold text-white">127</div>
+                    </div>
+                  </div>
+                  {/* Progress Bar */}
+                  <div className="mt-3">
+                    <div className="mb-1 flex items-center justify-between text-[10px]">
+                      <span className="text-white/40">Progress</span>
+                      <span className="text-emerald-400">96%</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full w-[96%] rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400" />
                     </div>
                   </div>
                 </div>
@@ -352,8 +450,8 @@ export default function HomePage() {
               {/* Bottom Card - Bar Chart */}
               <FloatingCard 
                 delay={600} 
-                className="absolute bottom-20 left-4 z-30 w-[180px] lg:bottom-16 lg:left-0 lg:w-[200px]"
-                rotate="-6deg"
+                className="absolute bottom-12 left-0 z-30 w-[160px] sm:bottom-20 sm:left-4 sm:w-[180px] lg:bottom-16 lg:left-0 lg:w-[200px]"
+                rotate="6deg"
               >
                 <div className="overflow-hidden rounded-xl border border-white/20 p-4 shadow-xl backdrop-blur-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
                   <div className="mb-2 flex items-center justify-between">
@@ -369,7 +467,7 @@ export default function HomePage() {
               {/* Floating Stats Badge */}
               <FloatingCard 
                 delay={800} 
-                className="absolute bottom-4 right-4 z-30 lg:bottom-8 lg:right-8"
+                className="absolute bottom-0 right-0 z-30 sm:bottom-4 sm:right-4 lg:bottom-8 lg:right-8"
                 rotate="4deg"
               >
                 <div className="flex items-center gap-3 rounded-2xl border border-white/20 px-4 py-3 shadow-lg backdrop-blur-xl" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0.05) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
@@ -388,17 +486,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Bottom Partner Logos */}
-        <FloatingCard delay={0} className="absolute bottom-8 left-0 right-0">
-          <div className="mx-auto max-w-4xl px-6">
-            <p className="mb-6 text-center text-xs text-white/30">Trusted by traders across India</p>
-            <div className="flex flex-wrap items-center justify-center gap-8 opacity-40 grayscale lg:gap-16">
-              {['NSE', 'BSE', 'SEBI Registered', 'ISO Certified', 'SSL Secured'].map((partner) => (
-                <span key={partner} className="text-sm font-medium text-white/60">{partner}</span>
-              ))}
-            </div>
-          </div>
-        </FloatingCard>
       </section>
 
       {/* How it Works Section */}
@@ -627,7 +714,14 @@ export default function HomePage() {
               >
                 <div className="flex items-center gap-2 p-4">
                   <span className="text-sm font-medium text-white/70">{row.label}</span>
-                  <span className="flex h-4 w-4 items-center justify-center rounded-full border border-white/20 text-[10px] text-white/40">?</span>
+                  <div className="group relative">
+                    <span className="flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-white/20 text-[10px] text-white/40 transition hover:border-emerald-500/50 hover:text-emerald-400">?</span>
+                    {/* Tooltip */}
+                    <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 rounded-xl border border-white/10 bg-[#1a1a1a] p-3 opacity-0 shadow-xl transition-opacity group-hover:opacity-100">
+                      <p className="text-xs leading-relaxed text-white/70">{PRICING_TOOLTIPS[row.key]}</p>
+                      <div className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-white/10 bg-[#1a1a1a]" />
+                    </div>
+                  </div>
                 </div>
                 <div className="flex items-center justify-center border-l border-white/10 p-4">
                   <span className="text-sm font-semibold text-white">{PRICING_DATA[selectedAccount].oneStep[row.key as keyof typeof PRICING_DATA["50000"]["oneStep"]]}</span>
@@ -649,9 +743,9 @@ export default function HomePage() {
 
             {/* CTA Button */}
             <div className="border-t border-white/10 bg-black/30 p-4">
-              <button className="w-full rounded-lg bg-emerald-500 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600">
+              <Link href="/login" className="block w-full rounded-lg bg-emerald-500 py-3 text-center text-sm font-semibold text-white transition hover:bg-emerald-600">
                 Start Challenge
-              </button>
+              </Link>
             </div>
           </div>
 
