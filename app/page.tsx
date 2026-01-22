@@ -366,7 +366,7 @@ export default function HomePage() {
                 className="absolute left-1/2 top-[45%] z-20 w-[260px] -translate-x-1/2 -translate-y-1/2 sm:w-[280px] lg:left-[40%] lg:w-[340px]"
                 rotate="-3deg"
               >
-                <div className="overflow-hidden rounded-2xl border border-white/20 p-5 shadow-2xl backdrop-blur-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+                <div className="overflow-hidden rounded-2xl border border-white/20 p-5 shadow-2xl backdrop-blur-xl" style={{ background: 'linear-gradient(145deg, rgba(40,40,40,0.6) 0%, rgba(20,20,20,0.8) 50%, rgba(30,30,30,0.6) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2)' }}>
                   {/* Card Header */}
                   <div className="mb-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -402,12 +402,12 @@ export default function HomePage() {
               {/* Top Right Card - Trading Stats */}
               <FloatingCard 
                 delay={400} 
-                className="absolute left-0 top-0 z-30 w-[180px] sm:right-4 sm:top-8 sm:w-[200px] lg:right-8 lg:top-4 lg:w-[220px]"
+                className="absolute left-0 top-0 z-30 w-[300px] sm:right-4 sm:top-8 sm:w-[380px] lg:right-8 lg:top-4 lg:w-[420px]"
                 rotate="-2deg"
               >
-                <div className="overflow-hidden rounded-xl border border-white/20 p-4 shadow-xl backdrop-blur-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+                <div className="overflow-hidden rounded-xl border border-white/20 p-4 shadow-xl backdrop-blur-xl" style={{ background: 'linear-gradient(145deg, rgba(40,40,40,0.6) 0%, rgba(20,20,20,0.8) 50%, rgba(30,30,30,0.6) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2)' }}>
                   {/* Stats Grid */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-4 gap-3">
                     {/* Win Rate */}
                     <div className="rounded-lg bg-white/5 p-2.5">
                       <div className="mb-1 flex items-center gap-1.5">
@@ -453,7 +453,7 @@ export default function HomePage() {
                 className="absolute bottom-12 left-0 z-30 w-[160px] sm:bottom-20 sm:left-4 sm:w-[180px] lg:bottom-16 lg:left-0 lg:w-[200px]"
                 rotate="6deg"
               >
-                <div className="overflow-hidden rounded-xl border border-white/20 p-4 shadow-xl backdrop-blur-xl" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+                <div className="overflow-hidden rounded-xl border border-white/20 p-4 shadow-xl backdrop-blur-xl" style={{ background: 'linear-gradient(145deg, rgba(40,40,40,0.6) 0%, rgba(20,20,20,0.8) 50%, rgba(30,30,30,0.6) 100%)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2)' }}>
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-medium text-white/50">Weekly Trades</span>
                     <span className="text-xs text-white/30">Jan 2026</span>
