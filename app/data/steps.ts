@@ -1,29 +1,47 @@
 export const STEPS = [
   {
-    step: "01",
-    title: "Choose Your Challenge",
+    step: "1",
+    title: "Start Your Journey",
     description:
-      "Select your account size and evaluation model. One-Step or Two-Step challenge based on your trading style.",
+      "Select an evaluation account matching your style. Trade in a fully simulated environment designed to resemble live markets. No real capital is at risk.",
     example:
-      "Example: Choose a ₹5,00,000 account with the One-Step Challenge. Hit 10% profit target while respecting 4% daily and 6% max drawdown.",
+      "Example: Choose a ₹5,00,000 account model, pay the fee, and begin trading on our simulated platform.",
     image: "https://images.unsplash.com/photo-1642543492481-44e81e3914a7?q=80&w=2000&auto=format&fit=crop"
   },
   {
-    step: "02",
-    title: "Pass & Get Funded",
+    step: "2",
+    title: "The Challenge",
     description:
-      "Trade under predefined risk rules with no minimum trading days. Pass the evaluation and receive your funded account.",
+      "Adhere to strict risk management rules: Max daily drawdown, overall drawdown, and risk per trade.",
     example:
-      "Example: After passing, receive your ₹5,00,000 funded account. Trade Indian equities and F&O using MT4/MT5 platforms.",
+      "Example: Maintain discipline. Any breach of hard rules like daily drawdown limits terminates the account.",
     image: "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=2000&auto=format&fit=crop"
   },
   {
-    step: "03",
-    title: "Earn Rewards",
+    step: "3",
+    title: "Complete Evaluation",
     description:
-      "Keep 80% of your profits with bi-weekly payouts. Withdraw via UPI, Bank Transfer, or Crypto. Minimum payout just ₹100.",
+      "Hit your profit target while respecting all drawdown limits and trading rules. Take your time—there is no deadline.",
     example:
-      "Example: Make ₹50,000 profit on your funded account. You keep ₹40,000 (80%). Payouts processed within 24-48 hours.",
+      "Example: Reach the defined profit goal without violating any risk parameters to pass the evaluation phase.",
     image: "https://images.unsplash.com/photo-1620714223084-8fcacc6dfd8d?q=80&w=2000&auto=format&fit=crop"
+  },
+  {
+    step: "4",
+    title: "Elite Status",
+    description:
+      "Qualify for a funded phase account. Continue trading in a simulated environment, eligible for performance rewards.",
+    example:
+      "Example: Upon passing, receive eligibility for a funded phase account and prove your consistency.",
+    image: "https://images.unsplash.com/photo-1611974765270-ca1258634369?q=80&w=2000&auto=format&fit=crop"
+  },
+  {
+    step: "5",
+    title: "Growth & Rewards",
+    description:
+      "Receive performance-based rewards from your simulated profits. Consistent traders can scale their account size.",
+    example:
+      "Example: Request payouts based on performance and grow your virtual capital limits through scaling.",
+    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2000&auto=format&fit=crop"
   }
 ];

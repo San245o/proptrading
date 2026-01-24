@@ -172,34 +172,38 @@ export default function Pricing() {
         </div>
 
         {/* Trading Rules Summary */}
-        <div className="mt-6 rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-transparent p-6 transition-all hover:bg-white/5">
-          <h4 className="text-lg font-bold text-white mb-4">Trading Rules Summary</h4>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <h5 className="text-sm font-semibold text-emerald-400 mb-2">✓ Allowed</h5>
-              <ul className="space-y-1 text-xs text-white/60">
-                <li>• News trading</li>
-                <li>• Expert Advisors (EAs)</li>
-                <li>• Manual & systematic strategies</li>
-                <li>• Copy trading (own accounts only)</li>
+        <div className="mx-auto mt-12 max-w-5xl rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-transparent p-8 transition-all hover:bg-white/5">
+          <h4 className="mb-8 text-center text-2xl font-bold text-white">Trading Rules Summary</h4>
+          <div className="grid gap-8 md:grid-cols-3">
+            <div className="flex flex-col items-center text-center">
+              <h5 className="mb-4 flex items-center gap-2 text-sm font-semibold text-emerald-400">
+                <span>✓</span> Allowed
+              </h5>
+              <ul className="space-y-3 text-sm text-white/60">
+                <li>News trading</li>
+                <li>Expert Advisors (EAs)</li>
+                <li>Manual & systematic strategies</li>
+                <li>Copy trading (own accounts only)</li>
               </ul>
             </div>
-            <div>
-              <h5 className="text-sm font-semibold text-red-400 mb-2">✗ Prohibited</h5>
-              <ul className="space-y-1 text-xs text-white/60">
-                <li>• Overnight holding</li>
-                <li>• Weekend holding</li>
-                <li>• Cross-account hedging</li>
-                <li>• HFT & latency arbitrage</li>
+            <div className="flex flex-col items-center text-center">
+              <h5 className="mb-4 flex items-center gap-2 text-sm font-semibold text-red-400">
+                <span>✗</span> Prohibited
+              </h5>
+              <ul className="space-y-3 text-sm text-white/60">
+                <li>Overnight holding</li>
+                <li>Weekend holding</li>
+                <li>Cross-account hedging</li>
+                <li>HFT & latency arbitrage</li>
               </ul>
             </div>
-            <div>
-              <h5 className="text-sm font-semibold text-white/80 mb-2">Funded Phase</h5>
-              <ul className="space-y-1 text-xs text-white/60">
-                <li>• 80% profit split</li>
-                <li>• 8% trailing drawdown</li>
-                <li>• 30-day payout cycle (14-day add-on)</li>
-                <li>• No consistency rule</li>
+            <div className="flex flex-col items-center text-center">
+              <h5 className="mb-4 text-sm font-semibold text-white/90">Funded Phase</h5>
+              <ul className="space-y-3 text-sm text-white/60">
+                <li>80% profit split</li>
+                <li>8% trailing drawdown</li>
+                <li>30-day payout cycle (14-day add-on)</li>
+                <li>No consistency rule</li>
               </ul>
             </div>
           </div>

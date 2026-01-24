@@ -1,11 +1,27 @@
 "use client";
 
 
+import BackToHome from "@/components/ui/BackToHome";
+
 export default function TermsPage() {
   return (
     <div className="relative min-h-screen w-full bg-[#0a0a0a] text-white/80 font-sans selection:bg-emerald-500/30">
+      {/* Dark Dot Matrix Background */}
+      <div
+        className="fixed inset-0 z-0"
+        style={{
+          backgroundColor: '#0a0a0a',
+          backgroundImage: `
+            radial-gradient(circle at 25% 25%, #222222 0.5px, transparent 1px),
+            radial-gradient(circle at 75% 75%, #111111 0.5px, transparent 1px)
+          `,
+          backgroundSize: '10px 10px',
+          imageRendering: 'pixelated' as const,
+        }}
+      />
       
-      <main className="container mx-auto px-6 py-32 max-w-4xl">
+      <BackToHome />
+      <main className="relative z-10 container mx-auto px-6 py-32 max-w-4xl">
         <div className="space-y-12">
             
           {/* Terms and Conditions Section */}

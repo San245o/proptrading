@@ -82,23 +82,47 @@ export default function Features() {
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-50" />
             <div className="relative z-10">
               <h3 className="text-lg font-bold text-white mb-4">Choose Your Evaluation Model</h3>
-              <div className="flex items-stretch gap-4">
-                <div className="flex-1 rounded-xl bg-white/5 border border-white/10 p-4 transition-colors group-hover:bg-white/10">
+              <div className="flex flex-col md:flex-row items-stretch gap-4">
+                <div className="group relative flex-1 flex flex-col justify-between rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-transparent p-6 transition-all hover:bg-white/5">
                   <div className="text-lg font-bold text-white mb-2">1-Step Challenge</div>
-                  <ul className="space-y-1 text-xs text-white/60">
-                    <li>• 10% Profit Target</li>
-                    <li>• 6% Trailing Drawdown</li>
-                    <li>• 4% Daily Loss Limit</li>
-                    <li>• Min 3 Trading Days</li>
+                  <ul className="space-y-2 text-xs text-white/60">
+                    <li className="flex items-center gap-2">
+                      <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
+                      10% Profit Target
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
+                      6% Trailing Drawdown
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
+                      4% Daily Loss Limit
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
+                      Min 3 Trading Days
+                    </li>
                   </ul>
                 </div>
-                <div className="flex-1 rounded-xl bg-white/5 border border-white/10 p-4 transition-colors group-hover:bg-white/10">
+                <div className="group relative flex-1 flex flex-col justify-between rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-transparent p-6 transition-all hover:bg-white/5">
                   <div className="text-lg font-bold text-white mb-2">2-Step Challenge</div>
-                  <ul className="space-y-1 text-xs text-white/60">
-                    <li>• Step 1: 8% | Step 2: 6%</li>
-                    <li>• 8% Static Drawdown</li>
-                    <li>• 4% Daily Loss Limit</li>
-                    <li>• Min 3 Trading Days</li>
+                  <ul className="space-y-2 text-xs text-white/60">
+                    <li className="flex items-center gap-2">
+                      <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
+                      Step 1: 8% | Step 2: 6%
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
+                      8% Static Drawdown
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
+                      4% Daily Loss Limit
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="h-1 w-1 rounded-full bg-emerald-500"></span>
+                      Min 3 Trading Days
+                    </li>
                   </ul>
                 </div>
               </div>

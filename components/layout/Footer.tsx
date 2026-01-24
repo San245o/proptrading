@@ -29,12 +29,7 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Links */}
-        <div className="mt-8 flex justify-center gap-6 text-sm text-white/50">
-          <a href="/terms" className="transition hover:text-white">Terms & Conditions</a>
-          <a href="/privacy" className="transition hover:text-white">Privacy Policy</a>
-          <a href="/legal" className="transition hover:text-white">Legal Disclaimer</a>
-        </div>
+
 
         {/* Risk Disclaimer */}
         <div className="mt-8 border-t border-white/10 pt-8">
@@ -44,6 +39,12 @@ export default function Footer() {
             No real money is at risk during the evaluation phase. Rewards are paid based on simulated performance. 
             Elite Prop India is not a broker, investment provider, or capital management service.
           </p>
+          <div className="mt-8 flex justify-center gap-6 text-sm text-white/50">
+          <a href="/terms" className="transition hover:text-white">Terms & Conditions</a>
+          <a href="/privacy" className="transition hover:text-white">Privacy Policy</a>
+          <a href="/legal" className="transition hover:text-white">Legal Disclaimer</a>
+        </div>
+
           <p className="mt-4 text-center text-xs text-white/30">
             © 2026 Elite Prop India. All rights reserved.
           </p>
