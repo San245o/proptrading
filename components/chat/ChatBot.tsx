@@ -29,7 +29,7 @@ export default function ChatBot() {
     <div className="fixed bottom-6 right-6 z-50">
       {/* Chatbot Window */}
       <div 
-        className={`absolute bottom-20 right-0 w-[340px] sm:w-[380px] transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+        className={`absolute bottom-20 right-0 w-[340px] sm:w-[380px] transition-all duration-[200ms] ease-[cubic-bezier(0.7,0,0.3,1)] ${
           chatbotOpen 
             ? "opacity-100 scale-100 translate-y-0" 
             : "opacity-0 scale-90 translate-y-4 pointer-events-none"
