@@ -33,7 +33,7 @@ export const STEPS = [
       "Qualify for a funded phase account. Continue trading in a simulated environment, eligible for performance rewards.",
     example:
       "Example: Upon passing, receive eligibility for a funded phase account and prove your consistency.",
-    image: "https://images.unsplash.com/photo-1611974765270-ca1258634369?q=80&w=2000&auto=format&fit=crop"
+    image: "https://images.unsplash.com/photo-1533227297135-258ed0527ca3?q=80&w=2000&auto=format&fit=crop"
   },
   {
     step: "5",
