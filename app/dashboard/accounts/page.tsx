@@ -179,27 +179,95 @@ const RadarChart = ({ data, score }: { data: { consistency: number; slUsage: num
   );
 };
 
-// --- TradingView Chart Component ---
-const BalanceChart = ({ data }: { data: LineData[] }) => {
+// --- TradingView Chart Component with Balance & Equity ---
+const BalanceEquityChart = ({ account }: { account: TradingAccount }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
   useEffect(() => {
-    if (!chartContainerRef.current || data.length === 0) return;
+    if (!chartContainerRef.current) return;
 
     const chart = createChart(chartContainerRef.current, {
       layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#6b7280' },
       grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
       width: chartContainerRef.current.clientWidth,
-      height: 200,
+      height: 300,
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)' },
-      timeScale: { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true },
+      timeScale: { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true, secondsVisible: false },
       crosshair: { horzLine: { color: 'rgba(59,130,246,0.3)' }, vertLine: { color: 'rgba(59,130,246,0.3)' } },
     });
 
     chartRef.current = chart;
-    const lineSeries = chart.addSeries(LineSeries, { color: '#3b82f6', lineWidth: 2 });
-    lineSeries.setData(data);
+    
+    // Build balance history directly from trades
+    const balancePoints: { time: number; value: number }[] = [];
+    const equityPoints: { time: number; value: number }[] = [];
+    
+    // Start with initial account size
+    const startTime = new Date(account.startDate).getTime();
+    balancePoints.push({ time: startTime, value: account.accountSize });
+    equityPoints.push({ time: startTime, value: account.accountSize });
+    
+    // Build running balance from each trade
+    let runningBalance = account.accountSize;
+    const sortedTrades = [...account.trades].sort((a, b) => 
+      new Date(a.closeTime || a.openTime).getTime() - new Date(b.closeTime || b.openTime).getTime()
+    );
+    
+    for (const trade of sortedTrades) {
+      runningBalance += trade.pnl;
+      const tradeTime = new Date(trade.closeTime || trade.openTime).getTime();
+      balancePoints.push({ time: tradeTime, value: runningBalance });
+      equityPoints.push({ time: tradeTime, value: runningBalance });
+    }
+    
+    // Add current point if different from last
+    const now = Date.now();
+    if (balancePoints.length === 1 || balancePoints[balancePoints.length - 1].time < now - 60000) {
+      balancePoints.push({ time: now, value: account.balance });
+      equityPoints.push({ time: now, value: account.equity });
+    }
+    
+    // Convert to LineData format with unique timestamps (use seconds)
+    const seenTimes = new Set<number>();
+    const balanceData: LineData[] = balancePoints
+      .map(p => ({ time: Math.floor(p.time / 1000) as Time, value: p.value }))
+      .filter(p => {
+        const t = p.time as number;
+        if (seenTimes.has(t)) return false;
+        seenTimes.add(t);
+        return true;
+      });
+    
+    seenTimes.clear();
+    const equityData: LineData[] = equityPoints
+      .map(p => ({ time: Math.floor(p.time / 1000) as Time, value: p.value }))
+      .filter(p => {
+        const t = p.time as number;
+        if (seenTimes.has(t)) return false;
+        seenTimes.add(t);
+        return true;
+      });
+    
+    // Balance line (blue)
+    const balanceSeries = chart.addSeries(LineSeries, { 
+      color: '#3b82f6', 
+      lineWidth: 2,
+      lastValueVisible: true,
+      priceLineVisible: false,
+    });
+    balanceSeries.setData(balanceData);
+    
+    // Equity line (cyan)
+    const equitySeries = chart.addSeries(LineSeries, { 
+      color: '#06b6d4', 
+      lineWidth: 2,
+      lineStyle: 0,
+      lastValueVisible: true,
+      priceLineVisible: false,
+    });
+    equitySeries.setData(equityData);
+    
     chart.timeScale().fitContent();
 
     const handleResize = () => {
@@ -207,9 +275,226 @@ const BalanceChart = ({ data }: { data: LineData[] }) => {
     };
     window.addEventListener('resize', handleResize);
     return () => { window.removeEventListener('resize', handleResize); chart.remove(); };
-  }, [data]);
+  }, [account]);
 
-  return <div ref={chartContainerRef} className="w-full" />;
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-white">Account Balance</h3>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-0.5 bg-blue-500" />
+            <span className="text-xs text-gray-400">Balance</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-0.5 bg-cyan-500" />
+            <span className="text-xs text-gray-400">Equity</span>
+          </div>
+        </div>
+      </div>
+      <div ref={chartContainerRef} className="w-full" />
+    </Card>
+  );
+};
+
+// --- Daily Summary Calendar Component ---
+const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAccount; formatCurrency: (n: number) => string }) => {
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+
+  const { weeklyData, monthDays, totalPnL, totalDays } = useMemo(() => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDayOfWeek = firstDay.getDay();
+
+    // Generate calendar days array
+    const days: Array<{ date: number | null; pnl: number; trades: number; dateStr: string }> = [];
+    
+    // Add empty cells for days before the first of the month
+    for (let i = 0; i < startDayOfWeek; i++) {
+      days.push({ date: null, pnl: 0, trades: 0, dateStr: '' });
+    }
+    
+    // Add days of the month
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dayData = account.tradingDays[dateStr];
+      days.push({
+        date: d,
+        pnl: dayData?.pnl || 0,
+        trades: dayData?.trades || 0,
+        dateStr,
+      });
+    }
+
+    // Calculate 4 weeks (Week 1-4)
+    const weeks: Array<{ name: string; dateRange: string; pnl: number; trades: number; days: number }> = [];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    // Week 1: Days 1-7
+    // Week 2: Days 8-14
+    // Week 3: Days 15-21
+    // Week 4: Days 22-end of month
+    const weekRanges = [
+      { start: 1, end: 7 },
+      { start: 8, end: 14 },
+      { start: 15, end: 21 },
+      { start: 22, end: daysInMonth },
+    ];
+    
+    weekRanges.forEach((range, i) => {
+      let weekPnL = 0;
+      let weekTrades = 0;
+      let tradingDays = 0;
+      
+      for (let d = range.start; d <= range.end; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        if (account.tradingDays[dateStr]) {
+          weekPnL += account.tradingDays[dateStr].pnl;
+          weekTrades += account.tradingDays[dateStr].trades;
+          tradingDays++;
+        }
+      }
+      
+      weeks.push({
+        name: `Week ${['One', 'Two', 'Three', 'Four'][i]}`,
+        dateRange: `${monthNames[month]} ${range.start} - ${monthNames[month]} ${range.end}`,
+        pnl: weekPnL,
+        trades: weekTrades,
+        days: tradingDays,
+      });
+    });
+
+    // Calculate totals for current month
+    let totalPnL = 0;
+    let totalDays = 0;
+    
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      if (account.tradingDays[dateStr]) {
+        totalPnL += account.tradingDays[dateStr].pnl;
+        totalDays++;
+      }
+    }
+
+    return { weeklyData: weeks, monthDays: days, totalPnL, totalDays };
+  }, [currentMonth, account.tradingDays]);
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  const goToToday = () => setCurrentMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+
+  return (
+    <Card className="!p-0 overflow-hidden">
+      <div className="p-6 border-b border-white/10">
+        <h3 className="text-lg font-semibold text-white">Daily Summary</h3>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3">
+        {/* Calendar */}
+        <div className="lg:col-span-2 p-6 border-r border-white/10">
+          {/* Month Navigation */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <button onClick={prevMonth} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <ChevronLeftIcon className="w-5 h-5 text-gray-400" />
+              </button>
+              <button onClick={nextMonth} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <ChevronRightIcon className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <h4 className="text-lg font-semibold text-white">
+              {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+            </h4>
+            <button onClick={goToToday} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-gray-400 transition-colors">
+              Today
+            </button>
+          </div>
+
+          {/* Summary Header */}
+          <div className="flex items-center gap-4 mb-4 text-sm">
+            <span className="text-gray-400">PnL:</span>
+            <span className={`font-bold ${totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {formatCurrency(totalPnL)}
+            </span>
+            <span className="text-gray-600">|</span>
+            <span className="text-gray-400">Days:</span>
+            <span className="text-white font-bold">{totalDays}</span>
+          </div>
+
+          {/* Day Headers */}
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {dayNames.map(day => (
+              <div key={day} className="text-center text-xs text-gray-500 py-2">{day}</div>
+            ))}
+          </div>
+
+          {/* Calendar Grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {monthDays.map((day, i) => (
+              <div
+                key={i}
+                className={`
+                  aspect-square p-1 rounded-lg text-center flex flex-col justify-between min-h-[70px]
+                  ${day.date === null ? 'bg-transparent' : 'bg-white/5 border border-white/5'}
+                  ${day.trades > 0 ? 'border-emerald-500/30' : ''}
+                `}
+              >
+                {day.date !== null && (
+                  <>
+                    <span className={`text-sm font-medium ${day.pnl > 0 ? 'text-emerald-400' : day.pnl < 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                      {day.date}
+                    </span>
+                    {day.trades > 0 && (
+                      <div className="text-[10px] space-y-0.5">
+                        <div className="text-gray-500">{day.trades} ↕</div>
+                        <div className={day.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                          {formatCurrency(day.pnl)}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Weekly Summary - 4 Weeks */}
+        <div className="p-6">
+          <h4 className="text-sm text-gray-400 font-medium mb-4">Weekly Summary</h4>
+          <div className="space-y-4">
+            {weeklyData.map((week, i) => (
+              <div key={i} className="pb-4 border-b border-white/5 last:border-0">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-medium text-white">{week.name}</span>
+                  <span className="text-xs text-gray-500">{week.dateRange}</span>
+                </div>
+                {week.trades > 0 ? (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className={`font-bold ${week.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      PnL: {formatCurrency(week.pnl)}
+                    </span>
+                    <span className="text-gray-400">Days: {week.days}</span>
+                  </div>
+                ) : (
+                  <span className="text-gray-500 text-sm">No trades</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
 };
 
 // --- Analysis Card Component (Short/Long Analysis) ---
@@ -454,7 +739,7 @@ const AccountSelector = ({ accounts, onSelect, onCreateNew }: {
           </div>
           <button
             onClick={onCreateNew}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors"
           >
             <PlusIcon className="w-5 h-5" />
             New Challenge
@@ -475,7 +760,7 @@ const AccountSelector = ({ accounts, onSelect, onCreateNew }: {
             </p>
             <button
               onClick={onCreateNew}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors"
             >
               <PlusIcon className="w-5 h-5" />
               Start New Challenge
@@ -658,29 +943,43 @@ const AccountDetails = ({ account, onBack }: { account: TradingAccount; onBack: 
   const visible = useStaggerMount(15, 50);
   const progress = getProgress(account);
 
-  // Generate balance history from trades with unique, sorted timestamps
-  const balanceHistory = useMemo((): LineData[] => {
+  // Generate balance and equity history with unique, sorted timestamps
+  const { balanceHistory, equityHistory } = useMemo(() => {
     const startDateStr = account.startDate.split('T')[0];
-    const dataMap = new Map<string, number>();
+    const balanceMap = new Map<string, number>();
+    const equityMap = new Map<string, number>();
     
-    dataMap.set(startDateStr, account.accountSize);
+    balanceMap.set(startDateStr, account.accountSize);
+    equityMap.set(startDateStr, account.accountSize);
     
     let runningPnL = 0;
     const sortedDates = Object.keys(account.tradingDays).sort();
     for (const date of sortedDates) {
       const dayData = account.tradingDays[date];
       runningPnL += dayData.pnl;
-      dataMap.set(date, account.accountSize + runningPnL);
+      const balance = account.accountSize + runningPnL;
+      balanceMap.set(date, balance);
+      // Equity varies slightly from balance (simulating open position fluctuation)
+      equityMap.set(date, balance + (Math.random() - 0.5) * balance * 0.002);
     }
     
-    const sortedEntries = Array.from(dataMap.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]));
+    const sortedEntries = Array.from(balanceMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
     
-    return sortedEntries.map(([date, value]) => ({
-      time: date as Time,
-      value,
-    }));
+    return {
+      balanceHistory: sortedEntries.map(([date, value]) => ({ time: date as Time, value })),
+      equityHistory: Array.from(equityMap.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, value]) => ({ time: date as Time, value })),
+    };
   }, [account.startDate, account.accountSize, account.tradingDays]);
+
+  // Open positions (simulated - in real app these would be actual open trades)
+  const openPositions = useMemo(() => {
+    // For demo purposes, show some "open" positions if there are recent trades
+    if (account.status === 'breached' || account.status === 'passed') return [];
+    // Simulate 0-2 open positions based on account activity
+    return [];
+  }, [account.status]);
 
   // Split trades by type
   const shortTrades = useMemo(() => account.trades.filter(t => t.type === 'sell'), [account.trades]);
@@ -785,13 +1084,13 @@ const AccountDetails = ({ account, onBack }: { account: TradingAccount; onBack: 
         </div>
       </FadeInItem>
 
+      {/* FP Score + Trading Objectives + Trading Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Score and Balance */}
+          {/* FP Score and Trading Objectives side by side */}
           <FadeInItem visible={visible[5]}>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-              <Card className="md:col-span-2 bg-gradient-to-br from-blue-900/30 to-transparent !border-blue-500/20">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="bg-gradient-to-br from-blue-900/30 to-transparent !border-blue-500/20">
                 <div className="flex items-center gap-2 mb-4">
                   <TargetIcon className="w-5 h-5 text-blue-400" />
                   <span className="font-semibold text-white">FP Score</span>
@@ -801,156 +1100,166 @@ const AccountDetails = ({ account, onBack }: { account: TradingAccount; onBack: 
                 </div>
               </Card>
 
-              <Card className="md:col-span-3">
-                <h3 className="text-lg font-semibold text-white mb-4">Balance Chart</h3>
-                {balanceHistory.length > 1 ? (
-                  <BalanceChart data={balanceHistory} />
-                ) : (
-                  <div className="h-[200px] flex items-center justify-center text-gray-500">
-                    Complete trades to see balance history
+              <Card className="md:col-span-2">
+                <h3 className="text-lg font-semibold text-white mb-6">Trading Objectives</h3>
+                <div className="space-y-5">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-white">Profit Target</span>
+                        <span className="text-xs text-gray-500">({account.profitTargetPercent}%)</span>
+                      </div>
+                      <span className="text-sm font-semibold text-white">{progress.profitProgress.toFixed(1)}%</span>
+                    </div>
+                    <ProgressBar value={Math.max(0, account.pnl)} max={account.profitTarget} color="bg-emerald-500" />
+                    <div className="flex justify-between mt-1 text-xs text-gray-500">
+                      <span>{formatCurrency(Math.max(0, account.pnl))}</span>
+                      <span>{formatCurrency(account.profitTarget)}</span>
+                    </div>
                   </div>
-                )}
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-white">Daily Loss</span>
+                        <span className="text-xs text-gray-500">({account.maxDailyLossPercent}% max)</span>
+                      </div>
+                      <span className="text-sm font-semibold text-white">{progress.dailyLossUsed.toFixed(1)}%</span>
+                    </div>
+                    <ProgressBar value={progress.dailyLossUsed} max={100} color="bg-blue-500" showDanger />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-white">Total Loss</span>
+                        <span className="text-xs text-gray-500">({account.maxTotalLossPercent}% max)</span>
+                      </div>
+                      <span className="text-sm font-semibold text-white">{progress.totalLossUsed.toFixed(1)}%</span>
+                    </div>
+                    <ProgressBar value={progress.totalLossUsed} max={100} color="bg-blue-500" showDanger />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-white">Trading Days</span>
+                      <span className="text-sm font-semibold text-white">{account.tradingDaysCompleted}/{account.minTradingDays}</span>
+                    </div>
+                    <ProgressBar value={account.tradingDaysCompleted} max={account.minTradingDays} color="bg-blue-500" />
+                  </div>
+                </div>
               </Card>
             </div>
           </FadeInItem>
+        </div>
 
-          {/* Trading Objectives */}
-          <FadeInItem visible={visible[6]}>
-            <Card>
-              <h3 className="text-lg font-semibold text-white mb-6">Trading Objectives</h3>
-              <div className="space-y-6">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-white">Profit Target</span>
-                      <span className="text-xs text-gray-500">({account.profitTargetPercent}%)</span>
-                    </div>
-                    <span className="text-sm font-semibold text-white">{progress.profitProgress.toFixed(1)}%</span>
-                  </div>
-                  <ProgressBar value={Math.max(0, account.pnl)} max={account.profitTarget} color="bg-emerald-500" />
-                  <div className="flex justify-between mt-1 text-xs text-gray-500">
-                    <span>{formatCurrency(Math.max(0, account.pnl))}</span>
-                    <span>{formatCurrency(account.profitTarget)}</span>
-                  </div>
-                </div>
+        {/* Right Column - Trading Panel */}
+        <FadeInItem visible={visible[5]}>
+          <TradingPanel account={account} onTrade={handleTrade} />
+        </FadeInItem>
+      </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-white">Daily Loss Used</span>
-                      <span className="text-xs text-gray-500">({account.maxDailyLossPercent}% max)</span>
-                    </div>
-                    <span className="text-sm font-semibold text-white">{progress.dailyLossUsed.toFixed(1)}%</span>
-                  </div>
-                  <ProgressBar value={progress.dailyLossUsed} max={100} color="bg-blue-500" showDanger />
-                  <div className="flex justify-between mt-1 text-xs text-gray-500">
-                    <span>Used: {formatCurrency(Math.abs(Math.min(0, account.dailyPnL)))}</span>
-                    <span>Max: {formatCurrency(account.maxDailyLoss)}</span>
-                  </div>
-                </div>
+      {/* Full Width Balance/Equity Chart */}
+      <FadeInItem visible={visible[6]}>
+        <BalanceEquityChart account={account} />
+      </FadeInItem>
 
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-white">Total Loss Used</span>
-                      <span className="text-xs text-gray-500">({account.maxTotalLossPercent}% max)</span>
-                    </div>
-                    <span className="text-sm font-semibold text-white">{progress.totalLossUsed.toFixed(1)}%</span>
-                  </div>
-                  <ProgressBar value={progress.totalLossUsed} max={100} color="bg-blue-500" showDanger />
-                  <div className="flex justify-between mt-1 text-xs text-gray-500">
-                    <span>Used: {formatCurrency(Math.abs(Math.min(0, account.pnl)))}</span>
-                    <span>Max: {formatCurrency(account.maxTotalLoss)}</span>
-                  </div>
-                </div>
+      {/* Daily Summary Calendar */}
+      <FadeInItem visible={visible[7]}>
+        <DailySummaryCalendar account={account} formatCurrency={formatCurrency} />
+      </FadeInItem>
 
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-white">Trading Days</span>
-                    <span className="text-sm font-semibold text-white">{account.tradingDaysCompleted}/{account.minTradingDays}</span>
-                  </div>
-                  <ProgressBar value={account.tradingDaysCompleted} max={account.minTradingDays} color="bg-blue-500" />
-                </div>
-              </div>
-            </Card>
-          </FadeInItem>
-
-          {/* Trade History */}
-          <FadeInItem visible={visible[7]}>
-            <Card className="!p-0 overflow-hidden">
-              <div className="p-6 border-b border-white/10">
-                <h3 className="font-semibold text-white">Trade History</h3>
-              </div>
-              {account.trades.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  No trades yet. Use the trading panel to simulate trades.
-                </div>
-              ) : (
+      {/* Trade History with Open Positions - LAST */}
+      <FadeInItem visible={visible[8]}>
+        <Card className="!p-0 overflow-hidden">
+          <div className="p-6 border-b border-white/10">
+            <h3 className="font-semibold text-white">Trade History & Open Positions</h3>
+          </div>
+          
+          {/* Open Positions Section */}
+          {openPositions.length > 0 && (
+            <div className="border-b border-white/10">
+              <div className="p-4 bg-blue-500/10">
+                <h4 className="text-sm font-medium text-blue-400 mb-3">Open Positions ({openPositions.length})</h4>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="border-b border-white/10 bg-white/5">
-                        <th className="p-4 font-medium text-gray-400">Symbol</th>
-                        <th className="p-4 font-medium text-gray-400">Type</th>
-                        <th className="p-4 font-medium text-gray-400">Lots</th>
-                        <th className="p-4 font-medium text-gray-400">Entry</th>
-                        <th className="p-4 font-medium text-gray-400">Exit</th>
-                        <th className="p-4 font-medium text-gray-400 text-right">P&L</th>
+                      <tr className="text-gray-500">
+                        <th className="pb-2 font-medium">Symbol</th>
+                        <th className="pb-2 font-medium">Type</th>
+                        <th className="pb-2 font-medium">Lots</th>
+                        <th className="pb-2 font-medium">Entry</th>
+                        <th className="pb-2 font-medium text-right">Floating P&L</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {account.trades.slice().reverse().slice(0, 10).map(trade => (
-                        <tr key={trade.id} className="border-b border-white/5 hover:bg-white/5">
-                          <td className="p-4 font-medium text-white">{trade.symbol}</td>
-                          <td className="p-4">
-                            <span className={trade.type === 'buy' ? 'text-emerald-400' : 'text-red-400'}>
-                              {trade.type.toUpperCase()}
+                      {openPositions.map((pos: any) => (
+                        <tr key={pos.id} className="border-t border-white/5">
+                          <td className="py-2 font-medium text-white">{pos.symbol}</td>
+                          <td className="py-2">
+                            <span className={pos.type === 'buy' ? 'text-emerald-400' : 'text-red-400'}>
+                              {pos.type.toUpperCase()}
                             </span>
                           </td>
-                          <td className="p-4 text-gray-400">{trade.lots}</td>
-                          <td className="p-4 font-mono text-gray-400">{trade.entryPrice.toFixed(5)}</td>
-                          <td className="p-4 font-mono text-gray-400">{trade.exitPrice?.toFixed(5) || '-'}</td>
-                          <td className={`p-4 font-mono font-bold text-right ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {trade.pnl >= 0 ? '+' : ''}{formatCurrency(trade.pnl)}
+                          <td className="py-2 text-gray-400">{pos.lots}</td>
+                          <td className="py-2 font-mono text-gray-400">{pos.entryPrice.toFixed(5)}</td>
+                          <td className={`py-2 font-mono font-bold text-right ${pos.floatingPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {pos.floatingPnL >= 0 ? '+' : ''}{formatCurrency(pos.floatingPnL)}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              )}
-            </Card>
-          </FadeInItem>
-        </div>
-
-        {/* Right Column - Trading Panel */}
-        <div className="space-y-6">
-          <FadeInItem visible={visible[8]}>
-            <TradingPanel account={account} onTrade={handleTrade} />
-          </FadeInItem>
-
-          {/* Quick Stats */}
-          <FadeInItem visible={visible[9]}>
-            <Card>
-              <h3 className="font-semibold text-white mb-4">Quick Stats</h3>
-              <div className="space-y-3">
-                {[
-                  { label: "Total Trades", value: account.totalTrades.toString() },
-                  { label: "Win Rate", value: account.totalTrades > 0 ? `${((account.winningTrades / account.totalTrades) * 100).toFixed(1)}%` : '0%' },
-                  { label: "Total Lots", value: account.totalLots.toFixed(2) },
-                  { label: "Biggest Win", value: formatCurrency(account.biggestWin), color: "text-emerald-400" },
-                  { label: "Biggest Loss", value: formatCurrency(account.biggestLoss), color: "text-red-400" },
-                ].map((item, i) => (
-                  <div key={i} className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
-                    <span className="text-gray-400 text-sm">{item.label}</span>
-                    <span className={`font-semibold ${item.color || 'text-white'}`}>{item.value}</span>
-                  </div>
-                ))}
               </div>
-            </Card>
-          </FadeInItem>
-        </div>
-      </div>
+            </div>
+          )}
+          
+          {/* Closed Trades */}
+          {account.trades.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              No trades yet. Use the trading panel to simulate trades.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 bg-white/5">
+                    <th className="p-4 font-medium text-gray-400">Symbol</th>
+                    <th className="p-4 font-medium text-gray-400">Type</th>
+                    <th className="p-4 font-medium text-gray-400">Lots</th>
+                    <th className="p-4 font-medium text-gray-400">Entry</th>
+                    <th className="p-4 font-medium text-gray-400">Exit</th>
+                    <th className="p-4 font-medium text-gray-400">Status</th>
+                    <th className="p-4 font-medium text-gray-400 text-right">P&L</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {account.trades.slice().reverse().slice(0, 15).map(trade => (
+                    <tr key={trade.id} className="border-b border-white/5 hover:bg-white/5">
+                      <td className="p-4 font-medium text-white">{trade.symbol}</td>
+                      <td className="p-4">
+                        <span className={trade.type === 'buy' ? 'text-emerald-400' : 'text-red-400'}>
+                          {trade.type.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="p-4 text-gray-400">{trade.lots}</td>
+                      <td className="p-4 font-mono text-gray-400">{trade.entryPrice.toFixed(5)}</td>
+                      <td className="p-4 font-mono text-gray-400">{trade.exitPrice?.toFixed(5) || '-'}</td>
+                      <td className="p-4">
+                        <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400">Closed</span>
+                      </td>
+                      <td className={`p-4 font-mono font-bold text-right ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {trade.pnl >= 0 ? '+' : ''}{formatCurrency(trade.pnl)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </FadeInItem>
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (

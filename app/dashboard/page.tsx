@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { TrophyIcon, PlusIcon, ChevronRightIcon, TrendingUpIcon, TrendingDownIcon } from '@/components/dashboard/icons';
 import { useSimulation } from '@/app/context/SimulationContext';
@@ -66,24 +66,19 @@ const CardInner = ({ children, className = "" }: { children: React.ReactNode; cl
   </div>
 );
 
-const ProgressBar = ({ progress, color = "bg-blue-600" }: { progress: number; color?: string }) => (
+const ProgressBar = ({ progress, color = "bg-emerald-600" }: { progress: number; color?: string }) => (
   <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden mt-2">
     <div className={`h-full ${color} transition-all duration-500`} style={{ width: `${Math.min(100, progress)}%` }} />
   </div>
 );
 
-// --- Static Data ---
-const INSTRUMENTS = [
-  { name: "XAUUSD", volume: "45%", color: "bg-yellow-500" },
-  { name: "EURUSD", volume: "30%", color: "bg-blue-500" },
-  { name: "US30", volume: "25%", color: "bg-purple-500" },
-];
-
-const SESSIONS = [
-  { session: "London", rate: "72%", active: true },
-  { session: "New York", rate: "65%", active: true },
-  { session: "Asian", rate: "40%", active: false },
-];
+// Session time helpers
+const getSessionFromTime = (dateStr: string): 'London' | 'New York' | 'Asian' => {
+  const hour = new Date(dateStr).getHours();
+  if (hour >= 0 && hour < 8) return 'Asian';
+  if (hour >= 8 && hour < 13) return 'London';
+  return 'New York';
+};
 
 export default function DashboardPage() {
   const { accounts, formatCurrency, getProgress, isLoading, state } = useSimulation();
@@ -107,6 +102,58 @@ export default function DashboardPage() {
     .sort((a, b) => new Date(b.closeTime || b.openTime).getTime() - new Date(a.closeTime || a.openTime).getTime())
     .slice(0, 5);
 
+  // Calculate top instruments from real trade data
+  const instrumentStats = useMemo(() => {
+    const allTrades = accounts.flatMap(acc => acc.trades);
+    if (allTrades.length === 0) {
+      return [
+        { name: "XAUUSD", volume: 0, color: "bg-yellow-500" },
+        { name: "EURUSD", volume: 0, color: "bg-emerald-500" },
+        { name: "US30", volume: 0, color: "bg-purple-500" },
+      ];
+    }
+    
+    const grouped: Record<string, number> = {};
+    allTrades.forEach(t => {
+      grouped[t.symbol] = (grouped[t.symbol] || 0) + t.lots;
+    });
+    
+    const totalLots = Object.values(grouped).reduce((a, b) => a + b, 0);
+    const colors = ["bg-yellow-500", "bg-emerald-500", "bg-purple-500", "bg-blue-500", "bg-pink-500"];
+    
+    return Object.entries(grouped)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, lots], i) => ({
+        name,
+        volume: totalLots > 0 ? Math.round((lots / totalLots) * 100) : 0,
+        color: colors[i % colors.length],
+      }));
+  }, [accounts]);
+
+  // Calculate session win rates from real trade data
+  const sessionStats = useMemo(() => {
+    const allTrades = accounts.flatMap(acc => acc.trades);
+    const sessions: Record<string, { wins: number; total: number }> = {
+      'London': { wins: 0, total: 0 },
+      'New York': { wins: 0, total: 0 },
+      'Asian': { wins: 0, total: 0 },
+    };
+    
+    allTrades.forEach(t => {
+      const session = getSessionFromTime(t.openTime);
+      sessions[session].total++;
+      if (t.pnl > 0) sessions[session].wins++;
+    });
+    
+    return Object.entries(sessions).map(([name, data]) => ({
+      session: name,
+      rate: data.total > 0 ? Math.round((data.wins / data.total) * 100) : 0,
+      active: data.total > 0,
+      trades: data.total,
+    }));
+  }, [accounts]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -128,7 +175,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href="/dashboard/new-challenge"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors"
           >
             <PlusIcon className="w-5 h-5" />
             New Challenge
@@ -192,7 +239,7 @@ export default function DashboardPage() {
               <p className="text-gray-400 text-sm mb-4">Start your trading journey with a new challenge</p>
               <Link
                 href="/dashboard/new-challenge"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 text-white text-sm hover:bg-blue-600 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-700 transition-colors"
               >
                 <PlusIcon className="w-4 h-4" />
                 Start Challenge
@@ -311,7 +358,7 @@ export default function DashboardPage() {
               </div>
               <div className="mt-4 pt-4 border-t border-white/5">
                 <Link href="/dashboard/profile">
-                  <button className="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium transition-colors text-white">
+                  <button className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-medium transition-colors text-white">
                     Request Payout
                   </button>
                 </Link>
@@ -370,17 +417,20 @@ export default function DashboardPage() {
           <CardInner>
             <h3 className="text-lg font-bold text-white mb-4">Top Instruments</h3>
             <div className="space-y-3">
-              {INSTRUMENTS.map((inst) => (
+              {instrumentStats.map((inst) => (
                 <div key={inst.name}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-gray-300">{inst.name}</span>
-                    <span className="text-gray-400 font-mono">{inst.volume}</span>
+                    <span className="text-gray-400 font-mono">{inst.volume}%</span>
                   </div>
                   <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div className={`h-full ${inst.color}`} style={{ width: inst.volume }} />
+                    <div className={`h-full ${inst.color}`} style={{ width: `${inst.volume}%` }} />
                   </div>
                 </div>
               ))}
+              {instrumentStats.length === 0 && (
+                <div className="text-gray-500 text-sm text-center py-4">No trades yet</div>
+              )}
             </div>
           </CardInner>
         </FadeInItem>
@@ -389,10 +439,11 @@ export default function DashboardPage() {
           <CardOuter>
             <h3 className="text-lg font-bold text-white mb-4">Session Win Rates</h3>
             <div className="grid grid-cols-3 gap-4">
-              {SESSIONS.map((s) => (
+              {sessionStats.map((s) => (
                 <div key={s.session} className={`p-4 rounded-2xl border transition-all ${s.active ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/5 bg-white/5'}`}>
                   <div className="text-sm text-gray-400 mb-2 font-medium">{s.session}</div>
-                  <div className={`text-2xl font-bold ${s.active ? 'text-white' : 'text-gray-500'}`}>{s.rate}</div>
+                  <div className={`text-2xl font-bold ${s.active ? 'text-white' : 'text-gray-500'}`}>{s.rate}%</div>
+                  <div className="text-xs text-gray-500 mt-1">{s.trades} trades</div>
                 </div>
               ))}
             </div>

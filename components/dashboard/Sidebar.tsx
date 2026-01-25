@@ -7,7 +7,6 @@ import {
   DashboardIcon, 
   PlusIcon, 
   BriefcaseIcon, 
-  ChartLineIcon, 
   UserIcon,
   MenuIcon,
   XIcon
@@ -26,7 +25,7 @@ const SidebarItem = ({ icon: Icon, label, href, isActive }: SidebarItemProps) =>
       href={href}
       className={`
         relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 group
-        ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-gray-400 hover:text-white hover:bg-white/10'}
+        ${isActive ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}
       `}
     >
       <Icon className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
@@ -38,7 +37,6 @@ const SidebarItem = ({ icon: Icon, label, href, isActive }: SidebarItemProps) =>
         opacity-0 translate-x-[-10px] pointer-events-none
         group-hover:opacity-100 group-hover:translate-x-0
         transition-all duration-200 z-50 whitespace-nowrap
-        shadow-xl
       ">
         {label}
       </span>
@@ -54,7 +52,6 @@ export default function Sidebar() {
     { icon: DashboardIcon, label: "Dashboard", href: "/dashboard" },
     { icon: PlusIcon, label: "New Challenge", href: "/dashboard/new-challenge" },
     { icon: BriefcaseIcon, label: "Accounts", href: "/dashboard/accounts" },
-    { icon: ChartLineIcon, label: "Analysis", href: "/dashboard/analysis" },
     { icon: UserIcon, label: "Profile", href: "/dashboard/profile" },
   ];
 
@@ -80,7 +77,7 @@ export default function Sidebar() {
       `}>
         {/* Logo Placeholder */}
         <div className="mb-12">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-xl">
+          <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center font-bold text-white text-xl">
             P
           </div>
         </div>
