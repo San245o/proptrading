@@ -1,14 +1,18 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import Link from 'next/link';
 import { createChart, ColorType, IChartApi, LineData, Time, LineSeries } from 'lightweight-charts';
-import { XIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon, CalendarIcon, TrendingUpIcon, TrendingDownIcon, TargetIcon, ClockIcon } from '@/components/dashboard/icons';
+import { useSimulation } from '@/app/context/SimulationContext';
+import { TradingAccount, Trade } from '@/app/lib/simulation';
+import { XIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon, CalendarIcon, TrendingUpIcon, TrendingDownIcon, TargetIcon, ClockIcon, PlusIcon } from '@/components/dashboard/icons';
 
 // --- Stagger Animation Hook ---
-function useStaggerMount(itemCount: number, baseDelay = 80) {
+function useStaggerMount(itemCount: number, baseDelay = 60) {
   const [visibleItems, setVisibleItems] = useState<boolean[]>(new Array(itemCount).fill(false));
   
   useEffect(() => {
+    setVisibleItems(new Array(itemCount).fill(false));
     const timers: NodeJS.Timeout[] = [];
     for (let i = 0; i < itemCount; i++) {
       timers.push(setTimeout(() => {
@@ -27,80 +31,101 @@ const FadeInItem = ({ visible, children, className = "" }: { visible: boolean; c
   </div>
 );
 
-// --- Mock Data ---
-const ACCOUNT_DATA = {
-  id: "1444096",
-  accountSize: 100000.00,
-  pnl: 3300.92,
-  startDate: "Oct 21, 2024",
-  endDate: "Nov 22, 2024",
-  balance: 103300.92,
-  equity: 103300.92,
-  minBalance: 99405.00,
-  minEquity: 99285.00,
-  fpScore: 50,
-  radarData: { consistency: 85, slUsage: 70, wr: 67, rr: 78 },
+// --- Card Components ---
+const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <div className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] p-6 ${className}`}>
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/5 via-transparent to-transparent opacity-50 pointer-events-none" />
+    <div className="relative z-10 h-full">{children}</div>
+  </div>
+);
+
+const GlassCard = ({ children, className = "", onClick }: { children: React.ReactNode; className?: string; onClick?: () => void }) => (
+  <div 
+    onClick={onClick}
+    className={`group relative flex flex-col justify-between rounded-2xl border border-white/10 bg-gradient-to-b from-white/10 to-transparent p-6 transition-all hover:bg-white/5 ${onClick ? 'cursor-pointer' : ''} ${className}`}
+  >
+    {children}
+  </div>
+);
+
+const ProgressBar = ({ value, max, color = "bg-blue-500", showDanger = false }: { value: number; max: number; color?: string; showDanger?: boolean }) => {
+  const percent = Math.min(100, Math.max(0, (value / max) * 100));
+  const barColor = showDanger && percent > 80 ? 'bg-red-500' : showDanger && percent > 50 ? 'bg-amber-500' : color;
+  return (
+    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+      <div className={`h-full ${barColor} rounded-full transition-all duration-500`} style={{ width: `${percent}%` }} />
+    </div>
+  );
 };
 
-const TRADING_OBJECTIVES = {
-  minTradingDays: { current: 2, target: 3, progress: 66.67 },
-  maxDailyLoss: { allowed: 4132.04, remaining: 4132.04, startingEquity: 103300.92, threshold: 99168.88, resetTime: "09:16:57" },
-  maxLoss: { allowed: 8000.00, remaining: 7285.00, threshold: 92000.00 },
-  profitTarget: { current: 3300.92, target: 10000.00, progress: 33.01 },
-  consistencyScore: { progress: 82.73, maxDailyProfit: 2730.92, maxAllowed: 45 },
+// --- Donut Chart Component ---
+const DonutChart = ({ 
+  value, 
+  max, 
+  size = 140, 
+  strokeWidth = 12,
+  primaryColor = "#10b981",
+  secondaryColor = "#ef4444",
+  centerValue,
+  centerLabel 
+}: { 
+  value: number; 
+  max: number; 
+  size?: number; 
+  strokeWidth?: number;
+  primaryColor?: string;
+  secondaryColor?: string;
+  centerValue: string;
+  centerLabel?: string;
+}) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const percentage = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+  const primaryDash = (percentage / 100) * circumference;
+  const secondaryDash = circumference - primaryDash;
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="-rotate-90">
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="rgba(255,255,255,0.1)"
+            strokeWidth={strokeWidth}
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={secondaryColor}
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${secondaryDash} ${circumference}`}
+            strokeDashoffset={-primaryDash}
+            strokeLinecap="round"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={primaryColor}
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${primaryDash} ${circumference}`}
+            strokeLinecap="round"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          {centerLabel && <span className="text-[10px] text-gray-500 uppercase tracking-wider">{centerLabel}</span>}
+          <span className="text-2xl font-bold text-white">{centerValue}</span>
+        </div>
+      </div>
+    </div>
+  );
 };
-
-const BALANCE_HISTORY: LineData[] = [
-  { time: '2024-10-21' as Time, value: 100000 },
-  { time: '2024-10-22' as Time, value: 100570 },
-  { time: '2024-10-23' as Time, value: 103300 },
-  { time: '2024-10-24' as Time, value: 103300 },
-  { time: '2024-10-25' as Time, value: 103300 },
-  { time: '2024-10-26' as Time, value: 103300 },
-  { time: '2024-10-27' as Time, value: 103300 },
-  { time: '2024-10-28' as Time, value: 103300 },
-  { time: '2024-10-29' as Time, value: 103300 },
-  { time: '2024-10-30' as Time, value: 103300 },
-  { time: '2024-10-31' as Time, value: 103300 },
-  { time: '2024-11-01' as Time, value: 103300 },
-  { time: '2024-11-05' as Time, value: 103300 },
-  { time: '2024-11-10' as Time, value: 103300 },
-];
-
-const WEEKLY_SUMMARY = [
-  { week: "Week One", dateRange: "Sep 29 - Oct 5", pnl: null, trades: "No trades" },
-  { week: "Week Two", dateRange: "Oct 6 - Oct 12", pnl: null, trades: "No trades" },
-  { week: "Week Three", dateRange: "Oct 13 - Oct 19", pnl: null, trades: "No trades" },
-  { week: "Week Four", dateRange: "Oct 20 - Oct 26", pnl: 3300.92, days: 2 },
-  { week: "Week Five", dateRange: "Oct 27 - Nov 2", pnl: null, trades: "No trades" },
-];
-
-const TRADING_DAYS: Record<string, { profit: number; trades: number }> = {
-  '2024-10-21': { profit: 570.00, trades: 2 },
-  '2024-10-23': { profit: 2730.92, trades: 1 },
-};
-
-const TRADING_STATS = {
-  numberOfDays: 2,
-  totalTrades: 3,
-  totalLots: 21.00,
-  biggestWin: 2730.92,
-  biggestLoss: -560.00,
-  averageWin: 1930.46,
-  winRatio: 66.67,
-  averageLoss: -560.00,
-  profitFactor: 6.89,
-};
-
-const TRADING_HISTORY = [
-  { id: 1, symbol: "AUDUSD", type: "Sell", openDate: "10/22/2024, 21:04", closedDate: "10/23/2024, 15:43", open: 0.66848, closed: 0.66387, tp: 0.66385, sl: 0.66976, lots: 6, commission: 42.00, profit: 2730.92 },
-  { id: 2, symbol: "EURUSD", type: "Sell", openDate: "10/21/2024, 16:56", closedDate: "10/21/2024, 19:03", open: 1.08557, closed: 1.08324, tp: 1.08323, sl: 1.08613, lots: 5, commission: 35.00, profit: 1130.00 },
-  { id: 3, symbol: "EURUSD", type: "Sell", openDate: "10/21/2024, 13:47", closedDate: "10/21/2024, 16:31", open: 1.08537, closed: 1.08586, tp: 1.08377, sl: 1.08586, lots: 10, commission: 70.00, profit: -560.00 },
-];
-
-const OPEN_POSITIONS = [
-  { id: 1, symbol: "BTCUSD", type: "Buy", openDate: "10/26/2024, 15:30", open: 42350.00, current: 42500.00, tp: 43000.00, sl: 41500.00, lots: 0.5, profit: 75.00 },
-];
 
 // --- Radar Chart Component ---
 const RadarChart = ({ data, score }: { data: { consistency: number; slUsage: number; wr: number; rr: number }; score: number }) => {
@@ -160,13 +185,13 @@ const BalanceChart = ({ data }: { data: LineData[] }) => {
   const chartRef = useRef<IChartApi | null>(null);
 
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    if (!chartContainerRef.current || data.length === 0) return;
 
     const chart = createChart(chartContainerRef.current, {
       layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#6b7280' },
       grid: { vertLines: { color: 'rgba(255,255,255,0.03)' }, horzLines: { color: 'rgba(255,255,255,0.03)' } },
       width: chartContainerRef.current.clientWidth,
-      height: 280,
+      height: 200,
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)' },
       timeScale: { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true },
       crosshair: { horzLine: { color: 'rgba(59,130,246,0.3)' }, vertLine: { color: 'rgba(59,130,246,0.3)' } },
@@ -187,544 +212,911 @@ const BalanceChart = ({ data }: { data: LineData[] }) => {
   return <div ref={chartContainerRef} className="w-full" />;
 };
 
-// --- Calendar Component ---
-const Calendar = ({ currentDate, onDateChange, tradingDays, onDayClick }: { 
-  currentDate: Date; onDateChange: (date: Date) => void;
-  tradingDays: Record<string, { profit: number; trades: number }>; onDayClick: (date: string) => void;
+// --- Analysis Card Component (Short/Long Analysis) ---
+const AnalysisCard = ({ 
+  title, 
+  trades, 
+  formatCurrency 
+}: { 
+  title: string; 
+  trades: Trade[]; 
+  formatCurrency: (n: number) => string;
 }) => {
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const wins = trades.filter(t => t.pnl > 0);
+  const losses = trades.filter(t => t.pnl < 0);
+  const totalPnL = trades.reduce((sum, t) => sum + t.pnl, 0);
+  const totalWins = wins.reduce((sum, t) => sum + t.pnl, 0);
+  const totalLosses = Math.abs(losses.reduce((sum, t) => sum + t.pnl, 0));
+  const winRate = trades.length > 0 ? (wins.length / trades.length) * 100 : 0;
 
-  const formatDateKey = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-  const days = [];
-  for (let i = 0; i < firstDay; i++) days.push(<div key={`empty-${i}`} className="h-20 border-r border-b border-white/5" />);
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateKey = formatDateKey(day);
-    const dayData = tradingDays[dateKey];
-    days.push(
-      <div key={day} onClick={() => dayData && onDayClick(dateKey)}
-        className={`h-20 border-r border-b border-white/5 p-2 relative transition-colors ${dayData ? 'cursor-pointer hover:bg-white/5' : ''} ${dayData && dayData.profit > 0 ? 'bg-emerald-500/5' : ''} ${dayData && dayData.profit < 0 ? 'bg-red-500/5' : ''}`}>
-        <span className={`text-sm ${dayData ? 'text-white font-medium' : 'text-gray-600'}`}>{day}</span>
-        {dayData && (
-          <div className="absolute bottom-2 right-2 text-right">
-            <div className="text-[10px] text-gray-500">{dayData.trades} ⇌</div>
-            <div className={`text-xs font-bold font-mono ${dayData.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              ${Math.abs(dayData.profit).toLocaleString()}
-            </div>
+  if (trades.length === 0) {
+    return (
+      <Card>
+        <h3 className="text-lg font-semibold text-white mb-4">{title}</h3>
+        <div className="flex flex-col items-center justify-center py-8">
+          <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
+            <span className="text-gray-500 text-xl">📊</span>
           </div>
-        )}
-      </div>
+          <span className="text-gray-500 text-sm">Profit</span>
+          <span className="text-gray-400 text-sm mt-2">Start trading to see analysis</span>
+        </div>
+        <div className="flex justify-between text-sm mt-4 pt-4 border-t border-white/5">
+          <div className="text-center">
+            <div className="text-gray-500">Wins (0)</div>
+            <div className="text-emerald-400 font-semibold">{formatCurrency(0)}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-gray-500">Win Rate</div>
+            <div className="text-white font-semibold">0%</div>
+          </div>
+          <div className="text-center">
+            <div className="text-gray-500">Losses (0)</div>
+            <div className="text-red-400 font-semibold">{formatCurrency(0)}</div>
+          </div>
+        </div>
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#0A0A0A]">
-      <div className="flex items-center gap-4 p-4 border-b border-white/10">
-        <button onClick={() => onDateChange(new Date(year, month - 1, 1))} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-          <ChevronLeftIcon className="w-5 h-5 text-gray-400" />
-        </button>
-        <button onClick={() => onDateChange(new Date(year, month + 1, 1))} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-          <ChevronRightIcon className="w-5 h-5 text-gray-400" />
-        </button>
-        <h3 className="text-lg font-semibold text-white">{monthNames[month]} {year}</h3>
-        <button onClick={() => onDateChange(new Date())} className="ml-auto px-4 py-2 text-sm font-medium text-gray-300 bg-white/5 hover:bg-white/10 rounded-lg transition-colors flex items-center gap-2">
-          <CalendarIcon className="w-4 h-4" /> Today
-        </button>
+    <Card>
+      <h3 className="text-lg font-semibold text-white mb-4">{title}</h3>
+      <div className="flex items-center justify-center py-4">
+        <DonutChart
+          value={totalWins}
+          max={totalWins + totalLosses}
+          centerValue={formatCurrency(totalPnL)}
+          centerLabel="PROFIT"
+          primaryColor="#10b981"
+          secondaryColor="#ef4444"
+        />
       </div>
-      <div className="grid grid-cols-7 bg-white/5">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div key={d} className="py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider border-r border-b border-white/5">{d}</div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7">{days}</div>
-    </div>
-  );
-};
-
-// --- Donut Chart Component ---
-const DonutChart = ({ value, total, label, centerLabel }: { value: number; total: number; label: string; centerLabel: string }) => {
-  const percentage = (value / total) * 100;
-  const circumference = 2 * Math.PI * 45;
-  const greenStroke = (percentage / 100) * circumference;
-  const redStroke = circumference - greenStroke;
-
-  return (
-    <div className="flex flex-col items-center">
-      <div className="relative w-32 h-32">
-        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-          <circle cx="50" cy="50" r="45" fill="none" stroke="#ef4444" strokeWidth="8" />
-          <circle cx="50" cy="50" r="45" fill="none" stroke="#10b981" strokeWidth="8" 
-            strokeDasharray={`${greenStroke} ${redStroke}`} strokeLinecap="round" />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[10px] text-gray-500 uppercase">{label}</span>
-          <span className="text-xl font-bold text-white">{centerLabel}</span>
+      <div className="flex justify-between text-sm mt-4 pt-4 border-t border-white/5">
+        <div className="text-center">
+          <div className="text-gray-500">Wins ({wins.length})</div>
+          <div className="text-emerald-400 font-semibold">{formatCurrency(totalWins)}</div>
+        </div>
+        <div className="text-center">
+          <div className="text-gray-500">Win Rate</div>
+          <div className="text-white font-semibold">{winRate.toFixed(2)}%</div>
+        </div>
+        <div className="text-center">
+          <div className="text-gray-500">Losses ({losses.length})</div>
+          <div className="text-red-400 font-semibold">{formatCurrency(totalLosses)}</div>
         </div>
       </div>
+    </Card>
+  );
+};
+
+// --- Profitability Card ---
+const ProfitabilityCard = ({ trades }: { trades: Trade[] }) => {
+  const wins = trades.filter(t => t.pnl > 0).length;
+  const losses = trades.filter(t => t.pnl < 0).length;
+  const total = trades.length;
+  const winRate = total > 0 ? (wins / total) * 100 : 0;
+  const lossRate = total > 0 ? (losses / total) * 100 : 0;
+
+  return (
+    <Card>
+      <h3 className="text-lg font-semibold text-white mb-4">Profitability</h3>
+      <div className="flex items-center justify-center py-4">
+        <DonutChart
+          value={wins}
+          max={total || 1}
+          centerValue={total.toString()}
+          centerLabel="TOTAL TRADES"
+          primaryColor="#10b981"
+          secondaryColor="#ef4444"
+        />
+      </div>
+      <div className="flex justify-between text-sm mt-4 pt-4 border-t border-white/5">
+        <div className="text-center">
+          <div className="text-gray-500">{winRate.toFixed(2)}%</div>
+          <div className="text-white font-medium">Wins: {wins}</div>
+        </div>
+        <div className="text-center">
+          <div className="text-gray-500">{lossRate.toFixed(2)}%</div>
+          <div className="text-white font-medium">Losses: {losses}</div>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+// --- Instrument Analysis Card ---
+const InstrumentAnalysisCard = ({ 
+  title, 
+  trades, 
+  mode,
+  formatCurrency 
+}: { 
+  title: string; 
+  trades: Trade[];
+  mode: 'profit' | 'volume';
+  formatCurrency: (n: number) => string;
+}) => {
+  const instrumentData = useMemo(() => {
+    const grouped: Record<string, { pnl: number; lots: number }> = {};
+    trades.forEach(t => {
+      if (!grouped[t.symbol]) grouped[t.symbol] = { pnl: 0, lots: 0 };
+      grouped[t.symbol].pnl += t.pnl;
+      grouped[t.symbol].lots += t.lots;
+    });
+    return Object.entries(grouped)
+      .map(([symbol, data]) => ({ symbol, ...data }))
+      .sort((a, b) => mode === 'profit' ? b.pnl - a.pnl : b.lots - a.lots)
+      .slice(0, 5);
+  }, [trades, mode]);
+
+  const maxValue = mode === 'profit' 
+    ? Math.max(...instrumentData.map(d => Math.abs(d.pnl)), 1)
+    : Math.max(...instrumentData.map(d => d.lots), 1);
+
+  if (instrumentData.length === 0) {
+    return (
+      <Card>
+        <h3 className="text-lg font-semibold text-white mb-4">{title}</h3>
+        <div className="text-center py-8 text-gray-500">No trading data available</div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <h3 className="text-lg font-semibold text-white mb-4">{title}</h3>
+      <div className="space-y-4">
+        {instrumentData.map(item => {
+          const value = mode === 'profit' ? item.pnl : item.lots;
+          const displayValue = mode === 'profit' ? formatCurrency(item.pnl) : `${item.lots.toFixed(0)} lots`;
+          const barWidth = (Math.abs(value) / maxValue) * 100;
+          const isNegative = mode === 'profit' && item.pnl < 0;
+          
+          return (
+            <div key={item.symbol} className="flex items-center gap-4">
+              <div className="w-16 text-sm text-gray-400">{item.symbol}</div>
+              <div className="flex-1 h-6 bg-white/5 rounded overflow-hidden relative">
+                <div 
+                  className={`h-full ${isNegative ? 'bg-red-500' : 'bg-emerald-500'} rounded transition-all duration-500`}
+                  style={{ width: `${barWidth}%` }}
+                />
+              </div>
+              <div className={`w-24 text-right text-sm font-medium ${isNegative ? 'text-red-400' : 'text-white'}`}>
+                {displayValue}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+};
+
+// --- Stats Row Component ---
+const StatsRow = ({ account, formatCurrency }: { account: TradingAccount; formatCurrency: (n: number) => string }) => {
+  const stats = [
+    { icon: CalendarIcon, label: 'Number of days', value: account.tradingDaysCompleted.toString() },
+    { label: '# Total Trades Taken', value: account.totalTrades.toString() },
+    { label: 'Total Lots Used', value: account.totalLots.toFixed(2) },
+    { icon: TrendingUpIcon, label: 'Biggest Win', value: formatCurrency(account.biggestWin), color: 'text-emerald-400' },
+    { icon: TrendingDownIcon, label: 'Biggest Loss', value: formatCurrency(account.biggestLoss), color: 'text-red-400' },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      {stats.map((stat, i) => (
+        <GlassCard key={i} className="!p-4">
+          <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+            {stat.icon && <stat.icon className="w-4 h-4" />}
+            <span>{stat.label}</span>
+          </div>
+          <div className={`text-xl font-bold ${stat.color || 'text-white'}`}>{stat.value}</div>
+        </GlassCard>
+      ))}
     </div>
   );
 };
 
-// --- Card Components ---
-const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-white/10 bg-[#0A0A0A] p-6 ${className}`}>
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent opacity-50 pointer-events-none" />
-    <div className="relative z-10 h-full">{children}</div>
-  </div>
-);
+// --- Account Selection View ---
+const AccountSelector = ({ accounts, onSelect, onCreateNew }: { 
+  accounts: TradingAccount[]; 
+  onSelect: (id: string) => void;
+  onCreateNew: () => void;
+}) => {
+  const visible = useStaggerMount(accounts.length + 2, 60);
+  const { formatCurrency, getProgress } = useSimulation();
 
-const GlassCard = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`group relative flex flex-col justify-between rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-transparent p-6 transition-all hover:bg-white/5 ${className}`}>
-    {children}
-  </div>
-);
+  const getStatusColor = (status: TradingAccount['status']) => {
+    switch (status) {
+      case 'evaluation': return 'text-blue-400 bg-blue-500/20 border-blue-500/30';
+      case 'funded': return 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30';
+      case 'passed': return 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30';
+      case 'breached': return 'text-red-400 bg-red-500/20 border-red-500/30';
+    }
+  };
 
-const ObjectiveCard = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <div className={`rounded-xl p-5 border border-white/10 bg-[#0A0A0A] ${className}`}>
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/5 via-transparent to-transparent opacity-50 pointer-events-none rounded-xl" />
-    {children}
-  </div>
-);
+  const getStatusLabel = (status: TradingAccount['status']) => {
+    switch (status) {
+      case 'evaluation': return 'In Evaluation';
+      case 'funded': return 'Funded';
+      case 'passed': return 'Challenge Passed';
+      case 'breached': return 'Breached';
+    }
+  };
 
-const ProgressBar = ({ value, max, color = "bg-blue-500" }: { value: number; max: number; color?: string }) => {
-  const percent = Math.min(100, Math.max(0, (value / max) * 100));
   return (
-    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-      <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${percent}%` }} />
+    <div className="space-y-8">
+      <FadeInItem visible={visible[0]}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white">My Accounts</h1>
+            <p className="text-gray-400 mt-1">Select an account to view details and trade</p>
+          </div>
+          <button
+            onClick={onCreateNew}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+          >
+            <PlusIcon className="w-5 h-5" />
+            New Challenge
+          </button>
+        </div>
+      </FadeInItem>
+
+      {accounts.length === 0 ? (
+        <FadeInItem visible={visible[1]}>
+          <Card className="text-center py-16">
+            <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6">
+              <TargetIcon className="w-10 h-10 text-gray-500" />
+            </div>
+            <h2 className="text-xl font-semibold text-white mb-2">No Accounts Yet</h2>
+            <p className="text-gray-400 mb-6 max-w-md mx-auto">
+              Start your trading journey by creating your first evaluation account. 
+              Choose from various account sizes and challenge types.
+            </p>
+            <button
+              onClick={onCreateNew}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+            >
+              <PlusIcon className="w-5 h-5" />
+              Start New Challenge
+            </button>
+          </Card>
+        </FadeInItem>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {accounts.map((account, i) => {
+            const progress = getProgress(account);
+            return (
+              <FadeInItem key={account.id} visible={visible[i + 1]}>
+                <GlassCard 
+                  onClick={() => onSelect(account.id)}
+                  className="hover:border-blue-500/30 hover:scale-[1.02] transition-all"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-white">{account.name}</h3>
+                      <p className="text-sm text-gray-500">ID: #{account.id.slice(0, 8)}</p>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(account.status)}`}>
+                      {getStatusLabel(account.status)}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400 text-sm">Balance</span>
+                      <span className="font-bold text-white">{formatCurrency(account.balance)}</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400 text-sm">P&L</span>
+                      <span className={`font-bold ${account.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {account.pnl >= 0 ? '+' : ''}{formatCurrency(account.pnl)}
+                      </span>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>Profit Progress</span>
+                        <span>{progress.profitProgress.toFixed(1)}%</span>
+                      </div>
+                      <ProgressBar value={progress.profitProgress} max={100} color="bg-emerald-500" />
+                    </div>
+
+                    <div className="pt-3 border-t border-white/5 flex justify-between text-xs text-gray-500">
+                      <span>{account.totalTrades} trades</span>
+                      <span>{account.tradingDaysCompleted}/{account.minTradingDays} days</span>
+                      <span>{account.type === 'one-step' ? 'One Step' : 'Two Step'}</span>
+                    </div>
+                  </div>
+                </GlassCard>
+              </FadeInItem>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- Trading Panel ---
+const TradingPanel = ({ account, onTrade }: { 
+  account: TradingAccount; 
+  onTrade: (symbol: string, type: 'buy' | 'sell', lots: number, outcome: 'win' | 'loss' | 'random') => void;
+}) => {
+  const { symbols } = useSimulation();
+  const [selectedSymbol, setSelectedSymbol] = useState(symbols[0].symbol);
+  const [lots, setLots] = useState(1);
+  const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
+
+  if (account.status === 'breached' || account.status === 'passed') {
+    return (
+      <Card>
+        <h3 className="font-semibold text-white mb-4">Trading Panel</h3>
+        <div className="text-center py-8">
+          <div className={`text-lg font-semibold mb-2 ${account.status === 'passed' ? 'text-emerald-400' : 'text-red-400'}`}>
+            {account.status === 'passed' ? '🎉 Challenge Completed!' : '⚠️ Account Breached'}
+          </div>
+          <p className="text-gray-400 text-sm">
+            {account.status === 'passed' 
+              ? 'Congratulations! You have successfully completed this challenge.' 
+              : 'This account has been breached due to violating trading rules.'}
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+        <TrendingUpIcon className="w-5 h-5 text-blue-400" />
+        Quick Trade Simulator
+      </h3>
+      
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm text-gray-400 mb-2">Symbol</label>
+          <select
+            value={selectedSymbol}
+            onChange={(e) => setSelectedSymbol(e.target.value)}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white outline-none focus:border-blue-500/50"
+          >
+            {symbols.map(s => (
+              <option key={s.symbol} value={s.symbol} className="bg-gray-900">{s.symbol}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-400 mb-2">Position Size (Lots)</label>
+          <input
+            type="number"
+            min={0.1}
+            max={10}
+            step={0.1}
+            value={lots}
+            onChange={(e) => setLots(parseFloat(e.target.value) || 0.1)}
+            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white outline-none focus:border-blue-500/50"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-400 mb-2">Direction</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setTradeType('buy')}
+              className={`py-2.5 rounded-lg font-medium transition-colors ${
+                tradeType === 'buy' ? 'bg-emerald-500 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              Buy / Long
+            </button>
+            <button
+              onClick={() => setTradeType('sell')}
+              className={`py-2.5 rounded-lg font-medium transition-colors ${
+                tradeType === 'sell' ? 'bg-red-500 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              Sell / Short
+            </button>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-white/10">
+          <label className="block text-sm text-gray-400 mb-2">Simulate Outcome</label>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => onTrade(selectedSymbol, tradeType, lots, 'win')}
+              className="py-2.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-medium hover:bg-emerald-500/30 transition-colors"
+            >
+              Win Trade
+            </button>
+            <button
+              onClick={() => onTrade(selectedSymbol, tradeType, lots, 'random')}
+              className="py-2.5 rounded-lg bg-blue-500/20 text-blue-400 font-medium hover:bg-blue-500/30 transition-colors"
+            >
+              Random
+            </button>
+            <button
+              onClick={() => onTrade(selectedSymbol, tradeType, lots, 'loss')}
+              className="py-2.5 rounded-lg bg-red-500/20 text-red-400 font-medium hover:bg-red-500/30 transition-colors"
+            >
+              Loss Trade
+            </button>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+// --- Account Details View ---
+const AccountDetails = ({ account, onBack }: { account: TradingAccount; onBack: () => void }) => {
+  const { formatCurrency, getProgress, executeTrade, deleteAccount } = useSimulation();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const visible = useStaggerMount(15, 50);
+  const progress = getProgress(account);
+
+  // Generate balance history from trades with unique, sorted timestamps
+  const balanceHistory = useMemo((): LineData[] => {
+    const startDateStr = account.startDate.split('T')[0];
+    const dataMap = new Map<string, number>();
+    
+    dataMap.set(startDateStr, account.accountSize);
+    
+    let runningPnL = 0;
+    const sortedDates = Object.keys(account.tradingDays).sort();
+    for (const date of sortedDates) {
+      const dayData = account.tradingDays[date];
+      runningPnL += dayData.pnl;
+      dataMap.set(date, account.accountSize + runningPnL);
+    }
+    
+    const sortedEntries = Array.from(dataMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]));
+    
+    return sortedEntries.map(([date, value]) => ({
+      time: date as Time,
+      value,
+    }));
+  }, [account.startDate, account.accountSize, account.tradingDays]);
+
+  // Split trades by type
+  const shortTrades = useMemo(() => account.trades.filter(t => t.type === 'sell'), [account.trades]);
+  const longTrades = useMemo(() => account.trades.filter(t => t.type === 'buy'), [account.trades]);
+
+  // Calculate radar data
+  const winRate = account.totalTrades > 0 ? (account.winningTrades / account.totalTrades) * 100 : 0;
+  const avgWin = account.winningTrades > 0 ? account.biggestWin / account.winningTrades : 0;
+  const avgLoss = account.losingTrades > 0 ? Math.abs(account.biggestLoss) / account.losingTrades : 0;
+  const riskReward = avgLoss > 0 ? (avgWin / avgLoss) * 50 : 50;
+  const radarData = useMemo(() => ({
+    consistency: Math.min(100, progress.profitProgress),
+    slUsage: 70 + Math.random() * 20,
+    wr: winRate,
+    rr: Math.min(100, riskReward),
+  }), [progress.profitProgress, winRate, riskReward]);
+  const fpScore = Math.round((radarData.consistency + radarData.slUsage + radarData.wr + radarData.rr) / 4);
+
+  const handleTrade = (symbol: string, type: 'buy' | 'sell', lots: number, outcome: 'win' | 'loss' | 'random') => {
+    executeTrade(symbol, type, lots, outcome);
+  };
+
+  const handleDelete = () => {
+    deleteAccount(account.id);
+    onBack();
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <FadeInItem visible={visible[0]}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={onBack}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+            >
+              <ChevronLeftIcon className="w-5 h-5 text-gray-400" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-white">{account.name}</h1>
+              <p className="text-gray-400 text-sm">Account #{account.id.slice(0, 8)} • {account.type === 'one-step' ? 'One Step' : 'Two Step'} Challenge</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`px-3 py-1.5 rounded-full text-sm font-medium border ${
+              account.status === 'evaluation' ? 'text-blue-400 bg-blue-500/20 border-blue-500/30' :
+              account.status === 'passed' ? 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30' :
+              account.status === 'funded' ? 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30' :
+              'text-red-400 bg-red-500/20 border-red-500/30'
+            }`}>
+              {account.status === 'evaluation' ? 'In Evaluation' : 
+               account.status === 'passed' ? 'Passed' :
+               account.status === 'funded' ? 'Funded' : 'Breached'}
+            </span>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
+            >
+              <XIcon className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </FadeInItem>
+
+      {/* Top Stats Row */}
+      <FadeInItem visible={visible[1]}>
+        <StatsRow account={account} formatCurrency={formatCurrency} />
+      </FadeInItem>
+
+      {/* Analysis Cards Row */}
+      <FadeInItem visible={visible[2]}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <AnalysisCard title="Short Analysis" trades={shortTrades} formatCurrency={formatCurrency} />
+          <ProfitabilityCard trades={account.trades} />
+          <AnalysisCard title="Long Analysis" trades={longTrades} formatCurrency={formatCurrency} />
+        </div>
+      </FadeInItem>
+
+      {/* Instrument Analysis Row */}
+      <FadeInItem visible={visible[3]}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <InstrumentAnalysisCard title="Instrument Profit Analysis" trades={account.trades} mode="profit" formatCurrency={formatCurrency} />
+          <InstrumentAnalysisCard title="Instrument Volume Analysis" trades={account.trades} mode="volume" formatCurrency={formatCurrency} />
+        </div>
+      </FadeInItem>
+
+      {/* Balance Stats Row */}
+      <FadeInItem visible={visible[4]}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: "Account Size", value: formatCurrency(account.accountSize), color: "text-blue-400" },
+            { label: "Balance", value: formatCurrency(account.balance), color: "text-white" },
+            { label: "P&L", value: `${account.pnl >= 0 ? '+' : ''}${formatCurrency(account.pnl)}`, color: account.pnl >= 0 ? "text-emerald-400" : "text-red-400" },
+            { label: "Equity", value: formatCurrency(account.equity), color: "text-white" },
+          ].map((item, i) => (
+            <GlassCard key={i}>
+              <div className="text-sm text-gray-400 mb-1">{item.label}</div>
+              <div className={`text-2xl font-bold ${item.color}`}>{item.value}</div>
+            </GlassCard>
+          ))}
+        </div>
+      </FadeInItem>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Score and Balance */}
+          <FadeInItem visible={visible[5]}>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+              <Card className="md:col-span-2 bg-gradient-to-br from-blue-900/30 to-transparent !border-blue-500/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <TargetIcon className="w-5 h-5 text-blue-400" />
+                  <span className="font-semibold text-white">FP Score</span>
+                </div>
+                <div className="flex items-center justify-center py-2">
+                  <RadarChart data={radarData} score={fpScore} />
+                </div>
+              </Card>
+
+              <Card className="md:col-span-3">
+                <h3 className="text-lg font-semibold text-white mb-4">Balance Chart</h3>
+                {balanceHistory.length > 1 ? (
+                  <BalanceChart data={balanceHistory} />
+                ) : (
+                  <div className="h-[200px] flex items-center justify-center text-gray-500">
+                    Complete trades to see balance history
+                  </div>
+                )}
+              </Card>
+            </div>
+          </FadeInItem>
+
+          {/* Trading Objectives */}
+          <FadeInItem visible={visible[6]}>
+            <Card>
+              <h3 className="text-lg font-semibold text-white mb-6">Trading Objectives</h3>
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-white">Profit Target</span>
+                      <span className="text-xs text-gray-500">({account.profitTargetPercent}%)</span>
+                    </div>
+                    <span className="text-sm font-semibold text-white">{progress.profitProgress.toFixed(1)}%</span>
+                  </div>
+                  <ProgressBar value={Math.max(0, account.pnl)} max={account.profitTarget} color="bg-emerald-500" />
+                  <div className="flex justify-between mt-1 text-xs text-gray-500">
+                    <span>{formatCurrency(Math.max(0, account.pnl))}</span>
+                    <span>{formatCurrency(account.profitTarget)}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-white">Daily Loss Used</span>
+                      <span className="text-xs text-gray-500">({account.maxDailyLossPercent}% max)</span>
+                    </div>
+                    <span className="text-sm font-semibold text-white">{progress.dailyLossUsed.toFixed(1)}%</span>
+                  </div>
+                  <ProgressBar value={progress.dailyLossUsed} max={100} color="bg-blue-500" showDanger />
+                  <div className="flex justify-between mt-1 text-xs text-gray-500">
+                    <span>Used: {formatCurrency(Math.abs(Math.min(0, account.dailyPnL)))}</span>
+                    <span>Max: {formatCurrency(account.maxDailyLoss)}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-white">Total Loss Used</span>
+                      <span className="text-xs text-gray-500">({account.maxTotalLossPercent}% max)</span>
+                    </div>
+                    <span className="text-sm font-semibold text-white">{progress.totalLossUsed.toFixed(1)}%</span>
+                  </div>
+                  <ProgressBar value={progress.totalLossUsed} max={100} color="bg-blue-500" showDanger />
+                  <div className="flex justify-between mt-1 text-xs text-gray-500">
+                    <span>Used: {formatCurrency(Math.abs(Math.min(0, account.pnl)))}</span>
+                    <span>Max: {formatCurrency(account.maxTotalLoss)}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-white">Trading Days</span>
+                    <span className="text-sm font-semibold text-white">{account.tradingDaysCompleted}/{account.minTradingDays}</span>
+                  </div>
+                  <ProgressBar value={account.tradingDaysCompleted} max={account.minTradingDays} color="bg-blue-500" />
+                </div>
+              </div>
+            </Card>
+          </FadeInItem>
+
+          {/* Trade History */}
+          <FadeInItem visible={visible[7]}>
+            <Card className="!p-0 overflow-hidden">
+              <div className="p-6 border-b border-white/10">
+                <h3 className="font-semibold text-white">Trade History</h3>
+              </div>
+              {account.trades.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  No trades yet. Use the trading panel to simulate trades.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10 bg-white/5">
+                        <th className="p-4 font-medium text-gray-400">Symbol</th>
+                        <th className="p-4 font-medium text-gray-400">Type</th>
+                        <th className="p-4 font-medium text-gray-400">Lots</th>
+                        <th className="p-4 font-medium text-gray-400">Entry</th>
+                        <th className="p-4 font-medium text-gray-400">Exit</th>
+                        <th className="p-4 font-medium text-gray-400 text-right">P&L</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {account.trades.slice().reverse().slice(0, 10).map(trade => (
+                        <tr key={trade.id} className="border-b border-white/5 hover:bg-white/5">
+                          <td className="p-4 font-medium text-white">{trade.symbol}</td>
+                          <td className="p-4">
+                            <span className={trade.type === 'buy' ? 'text-emerald-400' : 'text-red-400'}>
+                              {trade.type.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="p-4 text-gray-400">{trade.lots}</td>
+                          <td className="p-4 font-mono text-gray-400">{trade.entryPrice.toFixed(5)}</td>
+                          <td className="p-4 font-mono text-gray-400">{trade.exitPrice?.toFixed(5) || '-'}</td>
+                          <td className={`p-4 font-mono font-bold text-right ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {trade.pnl >= 0 ? '+' : ''}{formatCurrency(trade.pnl)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          </FadeInItem>
+        </div>
+
+        {/* Right Column - Trading Panel */}
+        <div className="space-y-6">
+          <FadeInItem visible={visible[8]}>
+            <TradingPanel account={account} onTrade={handleTrade} />
+          </FadeInItem>
+
+          {/* Quick Stats */}
+          <FadeInItem visible={visible[9]}>
+            <Card>
+              <h3 className="font-semibold text-white mb-4">Quick Stats</h3>
+              <div className="space-y-3">
+                {[
+                  { label: "Total Trades", value: account.totalTrades.toString() },
+                  { label: "Win Rate", value: account.totalTrades > 0 ? `${((account.winningTrades / account.totalTrades) * 100).toFixed(1)}%` : '0%' },
+                  { label: "Total Lots", value: account.totalLots.toFixed(2) },
+                  { label: "Biggest Win", value: formatCurrency(account.biggestWin), color: "text-emerald-400" },
+                  { label: "Biggest Loss", value: formatCurrency(account.biggestLoss), color: "text-red-400" },
+                ].map((item, i) => (
+                  <div key={i} className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
+                    <span className="text-gray-400 text-sm">{item.label}</span>
+                    <span className={`font-semibold ${item.color || 'text-white'}`}>{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </FadeInItem>
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <Card className="w-full max-w-md">
+            <h3 className="text-xl font-bold text-white mb-4">Delete Account?</h3>
+            <p className="text-gray-400 mb-6">
+              Are you sure you want to delete this account? This action cannot be undone and all trading history will be lost.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2.5 rounded-lg border border-white/10 text-gray-400 hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-2.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
+              >
+                Delete Account
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
 
 // --- Main Page ---
 export default function AccountsPage() {
-  const [calendarDate, setCalendarDate] = useState(new Date(2024, 9, 1));
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'history' | 'positions'>('history');
-  const visible = useStaggerMount(16, 60);
+  const { accounts, selectedAccount, selectAccount, isLoading } = useSimulation();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (selectedAccount) {
+    return <AccountDetails account={selectedAccount} onBack={() => selectAccount(null)} />;
+  }
 
   return (
-    <div className="relative min-h-screen text-white space-y-8 pb-12">
-      {/* Dark Dot Matrix Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none" style={{
-        backgroundColor: '#0a0a0a',
-        backgroundImage: `radial-gradient(circle at 25% 25%, #222222 0.5px, transparent 1px), radial-gradient(circle at 75% 75%, #111111 0.5px, transparent 1px)`,
-        backgroundSize: '10px 10px',
-      }} />
-
-      <div className="relative z-10 space-y-8">
-        {/* Top Stats Row */}
-        <FadeInItem visible={visible[0]}>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[
-              { icon: "$", label: "Account Size", value: `$${ACCOUNT_DATA.accountSize.toLocaleString()}`, color: "text-blue-400" },
-              { icon: <TrendingUpIcon className="w-4 h-4" />, label: "PnL", value: `$${ACCOUNT_DATA.pnl.toLocaleString()}`, color: "text-emerald-400" },
-              { icon: <CalendarIcon className="w-4 h-4" />, label: "Start Date", value: ACCOUNT_DATA.startDate, color: "text-white" },
-              { icon: <CalendarIcon className="w-4 h-4" />, label: "End Date", value: ACCOUNT_DATA.endDate, color: "text-white" },
-            ].map((item, i) => (
-              <GlassCard key={i}>
-                <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
-                  <span className="text-blue-400">{item.icon}</span> {item.label}
-                </div>
-                <div className={`text-2xl font-bold ${item.color}`}>{item.value}</div>
-              </GlassCard>
-            ))}
-          </div>
-        </FadeInItem>
-
-        {/* Score and Balance Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <FadeInItem visible={visible[1]} className="lg:col-span-4">
-            <Card className="h-full bg-gradient-to-br from-blue-900/30 to-transparent !border-blue-500/20">
-              <div className="flex items-center gap-2 mb-4">
-                <TargetIcon className="w-5 h-5 text-blue-400" />
-                <span className="font-semibold text-white">Score</span>
-              </div>
-              <div className="flex-1 flex items-center justify-center py-4">
-                <RadarChart data={ACCOUNT_DATA.radarData} score={ACCOUNT_DATA.fpScore} />
-              </div>
-            </Card>
-          </FadeInItem>
-
-          <FadeInItem visible={visible[2]} className="lg:col-span-8">
-            <Card className="h-full">
-              <div className="grid grid-cols-2 gap-8">
-                <div>
-                  <div className="text-gray-400 text-sm mb-2">Balance</div>
-                  <div className="text-3xl font-bold text-white mb-3">${ACCOUNT_DATA.balance.toLocaleString()}</div>
-                  <ProgressBar value={100} max={100} color="bg-blue-500" />
-                  <div className="flex justify-between mt-2 text-xs text-gray-500">
-                    <span className="text-emerald-400">Min ${ACCOUNT_DATA.minBalance.toLocaleString()}</span>
-                    <span className="text-blue-400">${ACCOUNT_DATA.balance.toLocaleString()} Max</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-gray-400 text-sm mb-2">Equity</div>
-                  <div className="text-3xl font-bold text-white mb-3">${ACCOUNT_DATA.equity.toLocaleString()}</div>
-                  <ProgressBar value={100} max={100} color="bg-blue-500" />
-                  <div className="flex justify-between mt-2 text-xs text-gray-500">
-                    <span className="text-emerald-400">Min ${ACCOUNT_DATA.minEquity.toLocaleString()}</span>
-                    <span className="text-blue-400">${ACCOUNT_DATA.equity.toLocaleString()} Max</span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </FadeInItem>
-        </div>
-
-        {/* Account Balance Chart */}
-        <FadeInItem visible={visible[3]}>
-          <Card>
-            <h3 className="text-lg font-semibold text-white mb-4">Account Balance</h3>
-            <BalanceChart data={BALANCE_HISTORY} />
-          </Card>
-        </FadeInItem>
-
-        {/* Trading Objectives */}
-        <FadeInItem visible={visible[4]}>
-          <h2 className="text-xl font-bold text-white mb-4">Trading Objectives</h2>
-          <div className="space-y-4">
-            <ObjectiveCard>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-white">Minimum Trading Days</span>
-                  <InfoIcon className="w-4 h-4 text-gray-500" />
-                </div>
-                <span className="text-sm text-gray-400">Progress: <span className="font-semibold text-white">{TRADING_OBJECTIVES.minTradingDays.progress.toFixed(2)}%</span></span>
-              </div>
-              <ProgressBar value={TRADING_OBJECTIVES.minTradingDays.current} max={TRADING_OBJECTIVES.minTradingDays.target} color="bg-blue-500" />
-              <div className="mt-2 text-sm text-gray-500">{TRADING_OBJECTIVES.minTradingDays.current} of {TRADING_OBJECTIVES.minTradingDays.target}.0 Trading Days Completed</div>
-            </ObjectiveCard>
-
-            <ObjectiveCard>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-white">Maximum Daily Loss</span>
-                  <InfoIcon className="w-4 h-4 text-gray-500" />
-                  <span className="flex items-center gap-1 px-2 py-1 bg-white/5 rounded text-xs text-gray-400">
-                    <ClockIcon className="w-3 h-3" /> Resets In: {TRADING_OBJECTIVES.maxDailyLoss.resetTime}
-                  </span>
-                </div>
-                <span className="text-sm text-gray-400">Remaining: <span className="font-semibold text-white">${TRADING_OBJECTIVES.maxDailyLoss.remaining.toLocaleString()}</span></span>
-              </div>
-              <ProgressBar value={0} max={100} color="bg-blue-500" />
-              <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-500">
-                <span>Max Allowed: <span className="text-white">${TRADING_OBJECTIVES.maxDailyLoss.allowed.toLocaleString()}</span></span>
-                <span>Starting Equity: <span className="text-white">${TRADING_OBJECTIVES.maxDailyLoss.startingEquity.toLocaleString()}</span></span>
-                <span>Threshold: <span className="text-white">${TRADING_OBJECTIVES.maxDailyLoss.threshold.toLocaleString()}</span></span>
-              </div>
-            </ObjectiveCard>
-
-            <ObjectiveCard>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-white">Maximum Loss</span>
-                  <InfoIcon className="w-4 h-4 text-gray-500" />
-                </div>
-                <span className="text-sm text-gray-400">Remaining: <span className="font-semibold text-white">${TRADING_OBJECTIVES.maxLoss.remaining.toLocaleString()}</span></span>
-              </div>
-              <ProgressBar value={715} max={8000} color="bg-blue-500" />
-              <div className="mt-2 flex gap-4 text-sm text-gray-500">
-                <span>Max Allowed: <span className="text-white">${TRADING_OBJECTIVES.maxLoss.allowed.toLocaleString()}</span></span>
-                <span>Threshold: <span className="text-white">${TRADING_OBJECTIVES.maxLoss.threshold.toLocaleString()}</span></span>
-              </div>
-            </ObjectiveCard>
-
-            <ObjectiveCard>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-white">Profit Target</span>
-                  <InfoIcon className="w-4 h-4 text-gray-500" />
-                </div>
-                <span className="text-sm text-gray-400">Progress: <span className="font-semibold text-white">{TRADING_OBJECTIVES.profitTarget.progress.toFixed(2)}%</span></span>
-              </div>
-              <ProgressBar value={TRADING_OBJECTIVES.profitTarget.current} max={TRADING_OBJECTIVES.profitTarget.target} color="bg-blue-500" />
-              <div className="mt-2 text-sm text-gray-500">${TRADING_OBJECTIVES.profitTarget.current.toLocaleString()} of ${TRADING_OBJECTIVES.profitTarget.target.toLocaleString()} Profit Achieved</div>
-            </ObjectiveCard>
-
-            <ObjectiveCard>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-white">Consistency Score</span>
-                  <InfoIcon className="w-4 h-4 text-gray-500" />
-                </div>
-                <span className="text-sm text-gray-400">Progress: <span className="font-semibold text-white">{TRADING_OBJECTIVES.consistencyScore.progress.toFixed(2)}%</span></span>
-              </div>
-              <ProgressBar value={TRADING_OBJECTIVES.consistencyScore.progress} max={100} color="bg-blue-500" />
-              <div className="mt-2 flex gap-4 text-sm text-gray-500">
-                <span>Max Daily Profit: <span className="text-white">${TRADING_OBJECTIVES.consistencyScore.maxDailyProfit.toLocaleString()}</span></span>
-                <span>Max Allowed: <span className="text-white">{TRADING_OBJECTIVES.consistencyScore.maxAllowed}%</span></span>
-              </div>
-            </ObjectiveCard>
-          </div>
-        </FadeInItem>
-
-        {/* Daily Summary Section */}
-        <FadeInItem visible={visible[5]}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">Daily Summary</h2>
-            <div className="flex items-center gap-4 text-sm">
-              <span className="text-gray-400">PnL: <span className="font-semibold text-emerald-400">${ACCOUNT_DATA.pnl.toLocaleString()}</span></span>
-              <span className="text-gray-400">Days: <span className="font-semibold text-white">2</span></span>
-            </div>
-          </div>
-        </FadeInItem>
-
-        <FadeInItem visible={visible[6]}>
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-3">
-              <Calendar currentDate={calendarDate} onDateChange={setCalendarDate} tradingDays={TRADING_DAYS} onDayClick={setSelectedDay} />
-            </div>
-            <div className="lg:col-span-1">
-              <Card className="h-full">
-                <h3 className="font-semibold text-white mb-4">Weekly Summary</h3>
-                <div className="space-y-4">
-                  {WEEKLY_SUMMARY.map((week, i) => (
-                    <div key={i} className={`pb-4 ${i < WEEKLY_SUMMARY.length - 1 ? 'border-b border-white/10' : ''}`}>
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="font-medium text-white">{week.week}</span>
-                        <span className="text-xs text-gray-500">{week.dateRange}</span>
-                      </div>
-                      {week.pnl ? (
-                        <div className="flex justify-between items-center">
-                          <span className="text-emerald-400 font-semibold">PnL: ${week.pnl.toLocaleString()}</span>
-                          <span className="text-xs text-gray-500">Days: {week.days}</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-500 text-sm">{week.trades}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
-          </div>
-        </FadeInItem>
-
-        {/* Stats Row */}
-        <FadeInItem visible={visible[7]}>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {[
-              { icon: <CalendarIcon className="w-4 h-4" />, label: "Number of days", value: TRADING_STATS.numberOfDays },
-              { icon: "#", label: "Total Trades Taken", value: TRADING_STATS.totalTrades },
-              { icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>, label: "Total Lots Used", value: TRADING_STATS.totalLots.toFixed(2) },
-              { icon: <TrendingUpIcon className="w-4 h-4 text-emerald-400" />, label: "Biggest Win", value: `$${TRADING_STATS.biggestWin.toLocaleString()}`, color: "text-emerald-400" },
-              { icon: <TrendingDownIcon className="w-4 h-4 text-red-400" />, label: "Biggest Loss", value: `-$${Math.abs(TRADING_STATS.biggestLoss).toLocaleString()}`, color: "text-red-400" },
-            ].map((item, i) => (
-              <GlassCard key={i}>
-                <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">{item.icon} {item.label}</div>
-                <div className={`text-xl font-bold ${item.color || 'text-white'}`}>{item.value}</div>
-              </GlassCard>
-            ))}
-          </div>
-        </FadeInItem>
-
-        {/* Analysis Section */}
-        <FadeInItem visible={visible[8]}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <h3 className="text-lg font-semibold text-white mb-6">Short Analysis</h3>
-              <div className="flex justify-center mb-6">
-                <DonutChart value={66.67} total={100} label="Profit" centerLabel={`$${ACCOUNT_DATA.pnl.toLocaleString()}`} />
-              </div>
-              <div className="grid grid-cols-3 gap-4 text-center text-sm">
-                <div><div className="text-gray-500">Wins (2)</div><div className="text-emerald-400 font-semibold">$3,860.92</div></div>
-                <div><div className="text-gray-500">Win Rate</div><div className="text-white font-semibold">66.67%</div></div>
-                <div><div className="text-gray-500">Losses (1)</div><div className="text-red-400 font-semibold">$560.00</div></div>
-              </div>
-            </Card>
-
-            <Card>
-              <h3 className="text-lg font-semibold text-white mb-6">Profitability</h3>
-              <div className="flex justify-center mb-6">
-                <DonutChart value={66.67} total={100} label="Total Trades" centerLabel="3" />
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-center text-sm">
-                <div><div className="text-gray-500">66.67%</div><div className="text-white">Wins: 2</div></div>
-                <div><div className="text-gray-500">33.33%</div><div className="text-white">Losses: 1</div></div>
-              </div>
-            </Card>
-
-            <Card>
-              <h3 className="text-lg font-semibold text-white mb-6">Long Analysis</h3>
-              <div className="flex flex-col items-center justify-center h-40">
-                <div className="w-12 h-12 rounded-full border-2 border-white/20 flex items-center justify-center mb-3">
-                  <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="text-gray-500 text-sm">Profit</div>
-                <div className="text-white">Start trading to see analysis</div>
-              </div>
-              <div className="grid grid-cols-3 gap-4 text-center text-sm">
-                <div><div className="text-gray-500">Wins (0)</div><div className="text-emerald-400 font-semibold">$3,860.92</div></div>
-                <div><div className="text-gray-500">Win Rate</div><div className="text-white font-semibold">0%</div></div>
-                <div><div className="text-gray-500">Losses (0)</div><div className="text-red-400 font-semibold">$560.00</div></div>
-              </div>
-            </Card>
-          </div>
-        </FadeInItem>
-
-        {/* Instrument Analysis */}
-        <FadeInItem visible={visible[9]}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <h3 className="text-lg font-semibold text-white mb-6">Instrument Profit Analysis</h3>
-              <div className="space-y-4">
-                {[
-                  { name: 'EURUSD', value: 570, color: 'bg-emerald-500' },
-                  { name: 'AUDUSD', value: 2730.92, color: 'bg-emerald-500' },
-                ].map((item) => (
-                  <div key={item.name} className="flex items-center gap-4">
-                    <span className="text-sm text-gray-400 w-16">{item.name}</span>
-                    <div className="flex-1 h-10 bg-white/5 rounded relative overflow-hidden flex items-end">
-                      <div className={`${item.color} rounded w-12`} style={{ height: `${(item.value / 3000) * 100}%` }} />
-                    </div>
-                    <span className="text-sm font-mono text-white w-20 text-right">${item.value.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card>
-              <h3 className="text-lg font-semibold text-white mb-6">Instrument Volume Analysis</h3>
-              <div className="space-y-4">
-                {[
-                  { name: 'EURUSD', value: 15, color: 'bg-emerald-500' },
-                  { name: 'AUDUSD', value: 6, color: 'bg-emerald-500' },
-                ].map((item) => (
-                  <div key={item.name} className="flex items-center gap-4">
-                    <span className="text-sm text-gray-400 w-16">{item.name}</span>
-                    <div className="flex-1 h-10 bg-white/5 rounded relative overflow-hidden flex items-end">
-                      <div className={`${item.color} rounded w-12`} style={{ height: `${(item.value / 20) * 100}%` }} />
-                    </div>
-                    <span className="text-sm font-mono text-white w-20 text-right">{item.value} lots</span>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-        </FadeInItem>
-
-        {/* Trading History Table */}
-        <FadeInItem visible={visible[10]}>
-          <Card className="!p-0 overflow-hidden">
-            <div className="flex gap-1 p-4 border-b border-white/10">
-              <button onClick={() => setActiveTab('history')} className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'history' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}>
-                Trading History
-              </button>
-              <button onClick={() => setActiveTab('positions')} className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'positions' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}>
-                Open Positions
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              {activeTab === 'history' ? (
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-white/10 bg-white/5">
-                      <th className="p-4 font-medium text-gray-400">Share</th>
-                      <th className="p-4 font-medium text-gray-400">Symbol</th>
-                      <th className="p-4 font-medium text-gray-400">Type</th>
-                      <th className="p-4 font-medium text-gray-400">Open Date</th>
-                      <th className="p-4 font-medium text-gray-400">Closed Date</th>
-                      <th className="p-4 font-medium text-gray-400">Open</th>
-                      <th className="p-4 font-medium text-gray-400">Closed</th>
-                      <th className="p-4 font-medium text-gray-400">TP</th>
-                      <th className="p-4 font-medium text-gray-400">SL</th>
-                      <th className="p-4 font-medium text-gray-400">Lots</th>
-                      <th className="p-4 font-medium text-gray-400">Commission</th>
-                      <th className="p-4 font-medium text-gray-400 text-right">Profit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {TRADING_HISTORY.map((trade) => (
-                      <tr key={trade.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="p-4"><button className="text-gray-500 hover:text-white"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg></button></td>
-                        <td className="p-4 font-medium text-white">{trade.symbol}</td>
-                        <td className="p-4"><span className={`${trade.type === 'Buy' ? 'text-emerald-400' : 'text-red-400'}`}>{trade.type}</span></td>
-                        <td className="p-4 text-gray-400">{trade.openDate}</td>
-                        <td className="p-4 text-gray-400">{trade.closedDate}</td>
-                        <td className="p-4 font-mono text-gray-400">{trade.open}</td>
-                        <td className="p-4 font-mono text-gray-400">{trade.closed}</td>
-                        <td className="p-4 font-mono text-gray-400">{trade.tp}</td>
-                        <td className="p-4 font-mono text-gray-400">{trade.sl}</td>
-                        <td className="p-4 font-mono text-white">{trade.lots}</td>
-                        <td className="p-4 font-mono text-gray-400">${trade.commission.toFixed(2)}</td>
-                        <td className={`p-4 font-mono font-bold text-right ${trade.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {trade.profit >= 0 ? '' : '-'}${Math.abs(trade.profit).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-white/10 bg-white/5">
-                      <th className="p-4 font-medium text-gray-400">Symbol</th>
-                      <th className="p-4 font-medium text-gray-400">Type</th>
-                      <th className="p-4 font-medium text-gray-400">Open Date</th>
-                      <th className="p-4 font-medium text-gray-400">Entry</th>
-                      <th className="p-4 font-medium text-gray-400">Current</th>
-                      <th className="p-4 font-medium text-gray-400">TP</th>
-                      <th className="p-4 font-medium text-gray-400">SL</th>
-                      <th className="p-4 font-medium text-gray-400">Lots</th>
-                      <th className="p-4 font-medium text-gray-400 text-right">Floating P&L</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {OPEN_POSITIONS.map((pos) => (
-                      <tr key={pos.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="p-4 font-medium text-white">{pos.symbol}</td>
-                        <td className="p-4"><span className={`${pos.type === 'Buy' ? 'text-emerald-400' : 'text-red-400'}`}>{pos.type}</span></td>
-                        <td className="p-4 text-gray-400">{pos.openDate}</td>
-                        <td className="p-4 font-mono text-gray-400">{pos.open}</td>
-                        <td className="p-4 font-mono text-white">{pos.current}</td>
-                        <td className="p-4 font-mono text-gray-400">{pos.tp}</td>
-                        <td className="p-4 font-mono text-gray-400">{pos.sl}</td>
-                        <td className="p-4 font-mono text-white">{pos.lots}</td>
-                        <td className={`p-4 font-mono font-bold text-right ${pos.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {pos.profit >= 0 ? '+' : '-'}${Math.abs(pos.profit).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </Card>
-        </FadeInItem>
-      </div>
-
-      {/* Day Detail Modal */}
-      {selectedDay && TRADING_DAYS[selectedDay] && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedDay(null)}>
-          <div className="bg-[#1a1d24] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-white">{selectedDay}</h3>
-                <p className="text-gray-400 text-sm">Daily Trading Summary</p>
-              </div>
-              <button onClick={() => setSelectedDay(null)} className="text-gray-400 hover:text-white"><XIcon /></button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="text-xs text-gray-500 uppercase mb-1">Trades</div>
-                <div className="text-xl font-bold text-white">{TRADING_DAYS[selectedDay].trades}</div>
-              </div>
-              <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="text-xs text-gray-500 uppercase mb-1">Profit</div>
-                <div className={`text-xl font-bold ${TRADING_DAYS[selectedDay].profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  ${TRADING_DAYS[selectedDay].profit.toLocaleString()}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <>
+      <AccountSelector 
+        accounts={accounts} 
+        onSelect={selectAccount}
+        onCreateNew={() => setShowCreateModal(true)}
+      />
+      
+      {showCreateModal && (
+        <CreateAccountModal onClose={() => setShowCreateModal(false)} />
       )}
-    </div>
+    </>
   );
 }
+
+// --- Create Account Modal ---
+const CreateAccountModal = ({ onClose }: { onClose: () => void }) => {
+  const { createNewAccount } = useSimulation();
+  const [type, setType] = useState<'one-step' | 'two-step'>('two-step');
+  const [size, setSize] = useState(500000);
+  const [name, setName] = useState('');
+
+  const sizes = [
+    { value: 50000, label: '₹50,000', fee: '₹1,000' },
+    { value: 100000, label: '₹1,00,000', fee: '₹2,000' },
+    { value: 250000, label: '₹2,50,000', fee: '₹4,000' },
+    { value: 500000, label: '₹5,00,000', fee: '₹8,000' },
+    { value: 1000000, label: '₹10,00,000', fee: '₹15,000' },
+    { value: 2500000, label: '₹25,00,000', fee: '₹35,000' },
+  ];
+
+  const handleCreate = () => {
+    createNewAccount(size, type, name || undefined);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <Card className="w-full max-w-lg">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-white">Create New Account</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <XIcon className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-6">
+          {/* Account Name */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">Account Name (Optional)</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="My Trading Account"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-gray-500 outline-none focus:border-blue-500/50"
+            />
+          </div>
+
+          {/* Challenge Type */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">Challenge Type</label>
+            <div className="grid grid-cols-2 gap-3">
+              {(['one-step', 'two-step'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setType(t)}
+                  className={`p-4 rounded-xl border transition-all ${
+                    type === t 
+                      ? 'border-blue-500/50 bg-blue-500/10' 
+                      : 'border-white/10 bg-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <div className="font-medium text-white">{t === 'one-step' ? 'One Step' : 'Two Step'}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {t === 'one-step' ? '8% target, 6% max DD' : '8%/5% targets, 8% max DD'}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Account Size */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">Account Size</label>
+            <div className="grid grid-cols-3 gap-2">
+              {sizes.map(s => (
+                <button
+                  key={s.value}
+                  onClick={() => setSize(s.value)}
+                  className={`p-3 rounded-xl border transition-all text-center ${
+                    size === s.value 
+                      ? 'border-blue-500/50 bg-blue-500/10' 
+                      : 'border-white/10 bg-white/5 hover:border-white/20'
+                  }`}
+                >
+                  <div className="font-medium text-white text-sm">{s.label}</div>
+                  <div className="text-xs text-gray-500">{s.fee}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-white/10 flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl border border-white/10 text-gray-400 hover:bg-white/5 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCreate}
+              className="flex-1 py-3 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+            >
+              Create Account
+            </button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+};

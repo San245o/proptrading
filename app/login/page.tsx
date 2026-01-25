@@ -1,23 +1,40 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 
+const VALID_CREDENTIALS = {
+  email: "8prajwal.mohan8@gmail.com",
+  password: "qwerty123"
+};
+
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate login
-    setTimeout(() => {
+    setError("");
+    
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    if (email === VALID_CREDENTIALS.email && password === VALID_CREDENTIALS.password) {
+      // Store auth state
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("userEmail", email);
+      router.push("/dashboard");
+    } else {
+      setError("Invalid email or password. Please try again.");
       setIsLoading(false);
-      // Handle login logic here
-    }, 1500);
+    }
   };
 
   const handleGoogleSignIn = () => {
@@ -84,6 +101,13 @@ export default function LoginPage() {
             <span className="text-xs text-white/40">or continue with email</span>
             <div className="h-px flex-1 bg-white/10" />
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              {error}
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
