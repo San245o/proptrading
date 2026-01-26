@@ -74,14 +74,6 @@ const ProgressBar = ({ progress, color = "bg-emerald-600" }: { progress: number;
   </div>
 );
 
-// Session time helpers
-const getSessionFromTime = (dateStr: string): 'London' | 'New York' | 'Asian' => {
-  const hour = new Date(dateStr).getHours();
-  if (hour >= 0 && hour < 8) return 'Asian';
-  if (hour >= 8 && hour < 13) return 'London';
-  return 'New York';
-};
-
 export default function DashboardPage() {
   const { accounts, formatCurrency, getProgress, isLoading, state } = useSimulation();
   const visible = useStaggerMount(10, 80);
@@ -109,9 +101,9 @@ export default function DashboardPage() {
     const allTrades = accounts.flatMap(acc => acc.trades);
     if (allTrades.length === 0) {
       return [
-        { name: "XAUUSD", volume: 0, color: "bg-yellow-500" },
-        { name: "EURUSD", volume: 0, color: "bg-emerald-500" },
-        { name: "US30", volume: 0, color: "bg-purple-500" },
+        { name: "NIFTY50", volume: 0, color: "bg-blue-500" },
+        { name: "BANKNIFTY", volume: 0, color: "bg-emerald-500" },
+        { name: "FINNIFTY", volume: 0, color: "bg-purple-500" },
       ];
     }
     
@@ -131,29 +123,6 @@ export default function DashboardPage() {
         volume: totalLots > 0 ? Math.round((lots / totalLots) * 100) : 0,
         color: colors[i % colors.length],
       }));
-  }, [accounts]);
-
-  // Calculate session win rates from real trade data
-  const sessionStats = useMemo(() => {
-    const allTrades = accounts.flatMap(acc => acc.trades);
-    const sessions: Record<string, { wins: number; total: number }> = {
-      'London': { wins: 0, total: 0 },
-      'New York': { wins: 0, total: 0 },
-      'Asian': { wins: 0, total: 0 },
-    };
-    
-    allTrades.forEach(t => {
-      const session = getSessionFromTime(t.openTime);
-      sessions[session].total++;
-      if (t.pnl > 0) sessions[session].wins++;
-    });
-    
-    return Object.entries(sessions).map(([name, data]) => ({
-      session: name,
-      rate: data.total > 0 ? Math.round((data.wins / data.total) * 100) : 0,
-      active: data.total > 0,
-      trades: data.total,
-    }));
   }, [accounts]);
 
   if (isLoading) {
@@ -433,45 +402,28 @@ export default function DashboardPage() {
         </FadeInItem>
       )}
 
-      {/* Bottom Section: Instruments & Sessions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <FadeInItem visible={visible[9]}>
-          <CardInner>
-            <h3 className="text-lg font-bold text-white mb-4">Top Instruments</h3>
-            <div className="space-y-3">
-              {instrumentStats.map((inst) => (
-                <div key={inst.name}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-300">{inst.name}</span>
-                    <span className="text-gray-400 font-mono">{inst.volume}%</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div className={`h-full ${inst.color}`} style={{ width: `${inst.volume}%` }} />
-                  </div>
+      {/* Bottom Section: Top Instruments */}
+      <FadeInItem visible={visible[9]}>
+        <CardInner>
+          <h3 className="text-lg font-bold text-white mb-4">Top Instruments</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {instrumentStats.map((inst) => (
+              <div key={inst.name} className="p-4 rounded-xl bg-white/5 border border-white/5">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-white font-medium">{inst.name}</span>
+                  <span className="text-gray-400 font-mono text-sm">{inst.volume}%</span>
                 </div>
-              ))}
-              {instrumentStats.length === 0 && (
-                <div className="text-gray-500 text-sm text-center py-4">No trades yet</div>
-              )}
-            </div>
-          </CardInner>
-        </FadeInItem>
-
-        <FadeInItem visible={visible[9]} className="col-span-1 md:col-span-2">
-          <CardOuter>
-            <h3 className="text-lg font-bold text-white mb-4">Session Win Rates</h3>
-            <div className="grid grid-cols-3 gap-4">
-              {sessionStats.map((s) => (
-                <div key={s.session} className={`p-4 rounded-2xl border transition-all ${s.active ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/5 bg-white/5'}`}>
-                  <div className="text-sm text-gray-400 mb-2 font-medium">{s.session}</div>
-                  <div className={`text-2xl font-bold ${s.active ? 'text-white' : 'text-gray-500'}`}>{s.rate}%</div>
-                  <div className="text-xs text-gray-500 mt-1">{s.trades} trades</div>
+                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div className={`h-full ${inst.color} rounded-full transition-all duration-500`} style={{ width: `${Math.max(inst.volume, 5)}%` }} />
                 </div>
-              ))}
-            </div>
-          </CardOuter>
-        </FadeInItem>
-      </div>
+              </div>
+            ))}
+          </div>
+          {instrumentStats.length === 0 && (
+            <div className="text-gray-500 text-sm text-center py-4">No trades yet</div>
+          )}
+        </CardInner>
+      </FadeInItem>
     </div>
   );
 }

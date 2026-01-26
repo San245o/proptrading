@@ -68,14 +68,14 @@ export interface SimulationState {
   };
 }
 
-// Market data simulation
+// Market data simulation - Indian Index Instruments
 export const SYMBOLS = [
-  { symbol: 'EURUSD', pip: 0.0001, spread: 1.2, volatility: 0.0008 },
-  { symbol: 'GBPUSD', pip: 0.0001, spread: 1.5, volatility: 0.0010 },
-  { symbol: 'USDJPY', pip: 0.01, spread: 1.0, volatility: 0.08 },
-  { symbol: 'AUDUSD', pip: 0.0001, spread: 1.3, volatility: 0.0007 },
-  { symbol: 'XAUUSD', pip: 0.01, spread: 30, volatility: 1.5 },
-  { symbol: 'BTCUSD', pip: 1, spread: 50, volatility: 500 },
+  { symbol: 'NIFTY50', pip: 0.05, spread: 0.5, volatility: 25 },
+  { symbol: 'BANKNIFTY', pip: 0.05, spread: 1.0, volatility: 60 },
+  { symbol: 'FINNIFTY', pip: 0.05, spread: 0.8, volatility: 40 },
+  { symbol: 'MIDCPNIFTY', pip: 0.05, spread: 1.5, volatility: 50 },
+  { symbol: 'SENSEX', pip: 0.05, spread: 1.0, volatility: 80 },
+  { symbol: 'BANKEX', pip: 0.05, spread: 1.2, volatility: 70 },
 ];
 
 export const ACCOUNT_CONFIGS = {
@@ -186,14 +186,14 @@ export function createAccount(
 export function getMarketPrice(symbol: string): { bid: number; ask: number } {
   const symbolData = SYMBOLS.find(s => s.symbol === symbol) || SYMBOLS[0];
   
-  // Base prices
+  // Base prices - Indian Index values
   const basePrices: Record<string, number> = {
-    'EURUSD': 1.0850,
-    'GBPUSD': 1.2650,
-    'USDJPY': 148.50,
-    'AUDUSD': 0.6580,
-    'XAUUSD': 2650.00,
-    'BTCUSD': 42500.00,
+    'NIFTY50': 24500.00,
+    'BANKNIFTY': 52000.00,
+    'FINNIFTY': 23800.00,
+    'MIDCPNIFTY': 12500.00,
+    'SENSEX': 81000.00,
+    'BANKEX': 56000.00,
   };
   
   const basePrice = basePrices[symbol] || 1.0000;

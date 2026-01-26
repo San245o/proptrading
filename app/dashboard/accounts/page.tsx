@@ -373,7 +373,19 @@ const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAcc
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
-  const [selectedDay, setSelectedDay] = useState<{ date: number; dateStr: string; pnl: number; trades: number } | null>(null);
+  
+  // Initialize selectedDay to today's date
+  const [selectedDay, setSelectedDay] = useState<{ date: number; dateStr: string; pnl: number; trades: number } | null>(() => {
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const dayData = account.tradingDays[dateStr];
+    return {
+      date: today.getDate(),
+      dateStr,
+      pnl: dayData?.pnl || 0,
+      trades: dayData?.trades || 0,
+    };
+  });
 
   const { weeklyData, monthDays, totalPnL, totalDays } = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -556,8 +568,8 @@ const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAcc
           </div>
         </div>
 
-        {/* Weekly Summary - 4 Weeks (Hidden on mobile when day selected) */}
-        <div className={`p-4 md:p-6 weekly-summary ${selectedDay ? 'hidden lg:block' : ''}`}>
+        {/* Weekly Summary - Right side on desktop */}
+        <div className="p-4 md:p-6 weekly-summary">
           <h4 className="text-sm text-gray-400 font-medium mb-4">Weekly Summary</h4>
           <div className="space-y-4">
             {weeklyData.map((week, i) => (
@@ -579,73 +591,51 @@ const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAcc
               </div>
             ))}
           </div>
-        </div>
-      </div>
 
-      {/* Day Detail Popup/Modal */}
-      {selectedDay && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedDay(null)}>
-          <div 
-            className="w-full max-w-md bg-[#0f1013] border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="p-6 border-b border-white/10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-white">
-                    {new Date(selectedDay.dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                  </h3>
-                  <p className="text-sm text-gray-400 mt-1">
-                    {selectedDay.trades} trade{selectedDay.trades !== 1 ? 's' : ''} • {account.name}
-                  </p>
-                </div>
-                <button 
-                  onClick={() => setSelectedDay(null)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <XIcon className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
-            </div>
-            
-            <div className="p-6">
+          {/* Day Details - Inline below weekly summary */}
+          {selectedDay && (
+            <div className="mt-6 pt-6 border-t border-white/10">
+              <h4 className="text-sm text-gray-400 font-medium mb-3">
+                {new Date(selectedDay.dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+              </h4>
+              
               {/* Day Summary */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-white/5 rounded-xl p-4">
-                  <div className="text-sm text-gray-400 mb-1">Day P&L</div>
-                  <div className={`text-2xl font-bold ${selectedDay.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-white/5 rounded-lg p-3">
+                  <div className="text-xs text-gray-400 mb-1">Day P&L</div>
+                  <div className={`text-lg font-bold ${selectedDay.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {selectedDay.pnl >= 0 ? '+' : ''}{formatCurrency(selectedDay.pnl)}
                   </div>
                 </div>
-                <div className="bg-white/5 rounded-xl p-4">
-                  <div className="text-sm text-gray-400 mb-1">Trades</div>
-                  <div className="text-2xl font-bold text-white">{selectedDay.trades}</div>
+                <div className="bg-white/5 rounded-lg p-3">
+                  <div className="text-xs text-gray-400 mb-1">Trades</div>
+                  <div className="text-lg font-bold text-white">{selectedDay.trades}</div>
                 </div>
               </div>
 
               {/* Trades List */}
               {selectedDayTrades.length > 0 ? (
                 <div>
-                  <h4 className="text-sm font-medium text-gray-400 mb-3">Trades</h4>
+                  <h5 className="text-xs font-medium text-gray-500 mb-2">Trade History</h5>
                   <div className="space-y-2 max-h-[200px] overflow-y-auto">
                     {selectedDayTrades.map(trade => (
-                      <div key={trade.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      <div key={trade.id} className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-6 h-6 rounded flex items-center justify-center ${
                             trade.pnl >= 0 ? 'bg-emerald-500/20' : 'bg-red-500/20'
                           }`}>
                             {trade.pnl >= 0 ? (
-                              <svg className="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
+                              <svg className="w-3 h-3 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
                             ) : (
-                              <svg className="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                              <svg className="w-3 h-3 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                             )}
                           </div>
                           <div>
-                            <div className="font-medium text-white text-sm">{trade.symbol}</div>
-                            <div className="text-xs text-gray-500">{trade.type.toUpperCase()} • {trade.lots} lots</div>
+                            <div className="font-medium text-white text-xs">{trade.symbol}</div>
+                            <div className="text-[10px] text-gray-500">{trade.type.toUpperCase()} • {trade.lots}L</div>
                           </div>
                         </div>
-                        <div className={`font-bold text-sm ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        <div className={`font-bold text-xs ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                           {trade.pnl >= 0 ? '+' : ''}{formatCurrency(trade.pnl)}
                         </div>
                       </div>
@@ -653,14 +643,14 @@ const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAcc
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-4 text-gray-500 text-sm">
                   No trades on this day
                 </div>
               )}
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </Card>
   );
 };
