@@ -372,11 +372,6 @@ export default function DashboardPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-white">{trade.symbol}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
-                          trade.type === 'buy' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
-                        }`}>
-                          {trade.type === 'buy' ? '↑ LONG' : '↓ SHORT'}
-                        </span>
                       </div>
                       <div className="text-xs text-gray-500">{trade.lots} lots</div>
                     </div>
@@ -402,25 +397,85 @@ export default function DashboardPage() {
         </FadeInItem>
       )}
 
-      {/* Bottom Section: Top Instruments */}
+      {/* Bottom Section: Top Instruments Pie Chart */}
       <FadeInItem visible={visible[9]}>
         <CardInner>
-          <h3 className="text-lg font-bold text-white mb-4">Top Instruments</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {instrumentStats.map((inst) => (
-              <div key={inst.name} className="p-4 rounded-xl bg-white/5 border border-white/5">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-white font-medium">{inst.name}</span>
-                  <span className="text-gray-400 font-mono text-sm">{inst.volume}%</span>
-                </div>
-                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                  <div className={`h-full ${inst.color} rounded-full transition-all duration-500`} style={{ width: `${Math.max(inst.volume, 5)}%` }} />
+          <h3 className="text-lg font-bold text-white mb-6">Top Instruments</h3>
+          {instrumentStats.length === 0 || instrumentStats.every(i => i.volume === 0) ? (
+            <div className="text-gray-500 text-sm text-center py-8">No trades yet</div>
+          ) : (
+            <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+              {/* Pie Chart */}
+              <div className="relative">
+                <svg width="200" height="200" viewBox="0 0 200 200">
+                  {(() => {
+                    const total = instrumentStats.reduce((sum, i) => sum + i.volume, 0) || 1;
+                    let cumulativePercent = 0;
+                    const colors = ['#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#8b5cf6'];
+                    
+                    return instrumentStats.map((inst, index) => {
+                      const percent = (inst.volume / total) * 100;
+                      const startAngle = cumulativePercent * 3.6 - 90;
+                      cumulativePercent += percent;
+                      const endAngle = cumulativePercent * 3.6 - 90;
+                      
+                      const startRad = (startAngle * Math.PI) / 180;
+                      const endRad = (endAngle * Math.PI) / 180;
+                      const largeArc = percent > 50 ? 1 : 0;
+                      
+                      const outerRadius = 80;
+                      const innerRadius = 50;
+                      const cx = 100;
+                      const cy = 100;
+                      
+                      const x1 = cx + outerRadius * Math.cos(startRad);
+                      const y1 = cy + outerRadius * Math.sin(startRad);
+                      const x2 = cx + outerRadius * Math.cos(endRad);
+                      const y2 = cy + outerRadius * Math.sin(endRad);
+                      const x3 = cx + innerRadius * Math.cos(endRad);
+                      const y3 = cy + innerRadius * Math.sin(endRad);
+                      const x4 = cx + innerRadius * Math.cos(startRad);
+                      const y4 = cy + innerRadius * Math.sin(startRad);
+                      
+                      const d = `M ${x1} ${y1} A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`;
+                      
+                      return (
+                        <path
+                          key={inst.name}
+                          d={d}
+                          fill={colors[index % colors.length]}
+                          className="transition-all duration-500 hover:opacity-80"
+                          style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                        />
+                      );
+                    });
+                  })()}
+                </svg>
+                {/* Center Text */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold text-white">{totalTrades}</span>
+                  <span className="text-xs text-gray-400">Total Trades</span>
                 </div>
               </div>
-            ))}
-          </div>
-          {instrumentStats.length === 0 && (
-            <div className="text-gray-500 text-sm text-center py-4">No trades yet</div>
+              
+              {/* Legend */}
+              <div className="flex flex-col gap-3">
+                {instrumentStats.map((inst, index) => {
+                  const colors = ['#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#8b5cf6'];
+                  const total = instrumentStats.reduce((sum, i) => sum + i.volume, 0) || 1;
+                  const percent = Math.round((inst.volume / total) * 100);
+                  return (
+                    <div key={inst.name} className="flex items-center gap-3">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: colors[index % colors.length] }}
+                      />
+                      <span className="text-gray-400 text-sm min-w-[80px]">{percent}% {inst.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </CardInner>
       </FadeInItem>

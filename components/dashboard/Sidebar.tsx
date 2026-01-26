@@ -1,15 +1,13 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   DashboardIcon, 
   PlusIcon, 
   BriefcaseIcon, 
-  UserIcon,
-  MenuIcon,
-  XIcon
+  UserIcon
 } from './icons';
 
 interface SidebarItemProps {
@@ -61,7 +59,6 @@ const SidebarItem = ({ icon: Icon, label, href, isActive }: SidebarItemProps) =>
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [isOpen, setIsOpen] = useState(false);
 
   const navItems = [
     { icon: DashboardIcon, label: "Dashboard", href: "/dashboard" },
@@ -72,25 +69,14 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile Hamburger */}
-      <div className="md:hidden fixed top-4 left-4 z-50">
-        <button 
-          onClick={() => setIsOpen(!isOpen)}
-          className="p-2 bg-[#101114] border border-white/10 rounded-lg text-white"
-        >
-          {isOpen ? <XIcon /> : <MenuIcon />}
-        </button>
-      </div>
-
-      {/* Sidebar Container */}
+      {/* Sidebar Container - Hidden on mobile */}
       <aside className={`
         fixed top-0 left-0 h-screen w-20 
         bg-[#0f1013] border-r border-white/5
-        flex flex-col items-center py-8 z-40
+        hidden md:flex flex-col items-center py-8 z-40
         transition-transform duration-300
-        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
-        {/* Logo Placeholder */}
+        {/* Logo Placeholder - Hidden on mobile */}
         <div className="mb-12">
           <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center font-bold text-white text-xl">
             P
@@ -116,13 +102,37 @@ export default function Sidebar() {
         </div>
       </aside>
       
-      {/* Overlay for mobile */}
-      {isOpen && (
-        <div 
-          className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#0f1013]/95 backdrop-blur-lg border-t border-white/10 flex items-center justify-around px-4 z-50 safe-area-bottom">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`
+                flex flex-col items-center justify-center gap-1 p-2 rounded-xl transition-all duration-300
+                ${isActive 
+                  ? 'text-emerald-400' 
+                  : 'text-gray-500 hover:text-gray-300'
+                }
+              `}
+            >
+              <div className={`
+                relative p-2 rounded-xl transition-all duration-300
+                ${isActive ? 'bg-emerald-500/20' : ''}
+              `}>
+                <Icon className="w-5 h-5" />
+                {isActive && (
+                  <div className="absolute inset-0 rounded-xl bg-emerald-500/20 animate-pulse" />
+                )}
+              </div>
+              <span className="text-[10px] font-medium">{item.label.split(' ')[0]}</span>
+            </Link>
+          );
+        })}
+      </nav>
     </>
   );
 }

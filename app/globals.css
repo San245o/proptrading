@@ -219,3 +219,52 @@ body::before {
     padding: 0.75rem;
   }
 }
+
+/* ========== Mobile Bottom Navigation Safe Area ========== */
+@media (max-width: 768px) {
+  .dashboard-content {
+    padding-bottom: 5rem;
+  }
+}
+
+/* ========== Animated Icons ========== */
+@keyframes trashShake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(10deg); }
+}
+
+@keyframes backArrowSlide {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-4px); }
+}
+
+.trash-icon-animated:hover {
+  animation: trashShake 0.4s ease-in-out;
+}
+
+.back-arrow-animated:hover {
+  animation: backArrowSlide 0.3s ease-in-out infinite;
+}
+
+/* ========== Pie Chart Animation ========== */
+@keyframes pieSliceGrow {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pie-chart-container svg path {
+  animation: pieSliceGrow 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.pie-chart-container svg path:nth-child(1) { animation-delay: 0ms; }
+.pie-chart-container svg path:nth-child(2) { animation-delay: 100ms; }
+.pie-chart-container svg path:nth-child(3) { animation-delay: 200ms; }
+.pie-chart-container svg path:nth-child(4) { animation-delay: 300ms; }
+.pie-chart-container svg path:nth-child(5) { animation-delay: 400ms; }

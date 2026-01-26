@@ -2,8 +2,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Helix Prop | Sequence Trading Edge",
-  description: "Modern prop firm landing page with cinematic sequence hero."
+  title: "Elite Prop India",
+  description: "The India centered prop firm"
 };
 
 export default function RootLayout({

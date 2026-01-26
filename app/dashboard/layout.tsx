@@ -25,7 +25,7 @@ export default function DashboardLayout({
         />
 
         <Sidebar />
-        <main className="relative z-10 flex-1 transition-all duration-300 md:ml-20 p-4 md:p-8 pt-16 md:pt-8 min-w-0">
+        <main className="relative z-10 flex-1 transition-all duration-300 md:ml-20 p-4 md:p-8 pt-6 md:pt-8 pb-24 md:pb-8 min-w-0">
           <div className="max-w-7xl mx-auto w-full">
             {children}
           </div>

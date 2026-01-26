@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { createChart, ColorType, IChartApi, LineData, Time, LineSeries } from 'lightweight-charts';
 import { useSimulation } from '@/app/context/SimulationContext';
 import { TradingAccount, Trade } from '@/app/lib/simulation';
-import { XIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon, CalendarIcon, TrendingUpIcon, TrendingDownIcon, TargetIcon, ClockIcon, PlusIcon } from '@/components/dashboard/icons';
+import { XIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon, CalendarIcon, TrendingUpIcon, TrendingDownIcon, TargetIcon, ClockIcon, PlusIcon, TrashIcon, ArrowLeftIcon } from '@/components/dashboard/icons';
 
 // --- Stagger Animation Hook ---
 function useStaggerMount(itemCount: number, baseDelay = 60) {
@@ -600,7 +600,7 @@ const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAcc
               </h4>
               
               {/* Day Summary */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="bg-white/5 rounded-lg p-3">
                   <div className="text-xs text-gray-400 mb-1">Day P&L</div>
                   <div className={`text-lg font-bold ${selectedDay.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -612,41 +612,6 @@ const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAcc
                   <div className="text-lg font-bold text-white">{selectedDay.trades}</div>
                 </div>
               </div>
-
-              {/* Trades List */}
-              {selectedDayTrades.length > 0 ? (
-                <div>
-                  <h5 className="text-xs font-medium text-gray-500 mb-2">Trade History</h5>
-                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                    {selectedDayTrades.map(trade => (
-                      <div key={trade.id} className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-6 h-6 rounded flex items-center justify-center ${
-                            trade.pnl >= 0 ? 'bg-emerald-500/20' : 'bg-red-500/20'
-                          }`}>
-                            {trade.pnl >= 0 ? (
-                              <svg className="w-3 h-3 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
-                            ) : (
-                              <svg className="w-3 h-3 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-medium text-white text-xs">{trade.symbol}</div>
-                            <div className="text-[10px] text-gray-500">{trade.type.toUpperCase()} • {trade.lots}L</div>
-                          </div>
-                        </div>
-                        <div className={`font-bold text-xs ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {trade.pnl >= 0 ? '+' : ''}{formatCurrency(trade.pnl)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-4 text-gray-500 text-sm">
-                  No trades on this day
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -816,15 +781,15 @@ const InstrumentAnalysisCard = ({
           const isNegative = mode === 'profit' && item.pnl < 0;
           
           return (
-            <div key={item.symbol} className="flex items-center gap-4">
-              <div className="w-16 text-sm text-gray-400">{item.symbol}</div>
-              <div className="flex-1 h-6 bg-white/5 rounded overflow-hidden relative">
+            <div key={item.symbol} className="flex items-center gap-3">
+              <div className="w-24 text-sm text-gray-400 shrink-0">{item.symbol}</div>
+              <div className="flex-1 h-6 bg-white/5 rounded overflow-hidden relative min-w-[100px]">
                 <div 
                   className={`h-full ${isNegative ? 'bg-red-500' : 'bg-emerald-500'} rounded transition-all duration-500`}
                   style={{ width: `${barWidth}%` }}
                 />
               </div>
-              <div className={`w-24 text-right text-sm font-medium ${isNegative ? 'text-red-400' : 'text-white'}`}>
+              <div className={`w-28 text-right text-sm font-medium shrink-0 ${isNegative ? 'text-red-400' : 'text-white'}`}>
                 {displayValue}
               </div>
             </div>
@@ -1173,9 +1138,10 @@ const AccountDetails = ({ account, onBack }: { account: TradingAccount; onBack: 
           <div className="flex items-center gap-4">
             <button
               onClick={onBack}
-              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+              className="group relative p-2.5 rounded-xl text-gray-400 hover:text-white transition-all duration-300 overflow-hidden"
             >
-              <ChevronLeftIcon className="w-5 h-5 text-gray-400" />
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <ArrowLeftIcon className="w-5 h-5 relative z-10 transition-transform duration-300 group-hover:-translate-x-1" />
             </button>
             <div>
               <h1 className="text-2xl font-bold text-white">{account.name}</h1>
@@ -1183,21 +1149,12 @@ const AccountDetails = ({ account, onBack }: { account: TradingAccount; onBack: 
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className={`px-3 py-1.5 rounded-full text-sm font-medium border ${
-              account.status === 'evaluation' ? 'text-blue-400 bg-blue-500/20 border-blue-500/30' :
-              account.status === 'passed' ? 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30' :
-              account.status === 'funded' ? 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30' :
-              'text-red-400 bg-red-500/20 border-red-500/30'
-            }`}>
-              {account.status === 'evaluation' ? 'In Evaluation' : 
-               account.status === 'passed' ? 'Passed' :
-               account.status === 'funded' ? 'Funded' : 'Breached'}
-            </span>
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
+              className="group relative p-2.5 rounded-xl text-red-400 hover:text-red-300 transition-all duration-300 overflow-hidden"
             >
-              <XIcon className="w-5 h-5" />
+              <div className="absolute inset-0 bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <TrashIcon className="w-5 h-5 relative z-10 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
             </button>
           </div>
         </div>
