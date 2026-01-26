@@ -183,6 +183,8 @@ const RadarChart = ({ data, score }: { data: { consistency: number; slUsage: num
 const BalanceEquityChart = ({ account }: { account: TradingAccount }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [tooltipData, setTooltipData] = useState<{ balance: number; equity: number; pnl: number; time: string; x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -194,7 +196,10 @@ const BalanceEquityChart = ({ account }: { account: TradingAccount }) => {
       height: 300,
       rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)' },
       timeScale: { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true, secondsVisible: false },
-      crosshair: { horzLine: { color: 'rgba(59,130,246,0.3)' }, vertLine: { color: 'rgba(59,130,246,0.3)' } },
+      crosshair: { 
+        horzLine: { color: 'rgba(59,130,246,0.3)', labelVisible: false }, 
+        vertLine: { color: 'rgba(59,130,246,0.3)', labelVisible: true } 
+      },
     });
 
     chartRef.current = chart;
@@ -255,6 +260,8 @@ const BalanceEquityChart = ({ account }: { account: TradingAccount }) => {
       lineWidth: 2,
       lastValueVisible: true,
       priceLineVisible: false,
+      crosshairMarkerVisible: true,
+      crosshairMarkerRadius: 5,
     });
     balanceSeries.setData(balanceData);
     
@@ -265,8 +272,37 @@ const BalanceEquityChart = ({ account }: { account: TradingAccount }) => {
       lineStyle: 0,
       lastValueVisible: true,
       priceLineVisible: false,
+      crosshairMarkerVisible: true,
+      crosshairMarkerRadius: 5,
     });
     equitySeries.setData(equityData);
+    
+    // Subscribe to crosshair move for tooltip
+    chart.subscribeCrosshairMove((param) => {
+      if (!param.point || !param.time || !chartContainerRef.current) {
+        setTooltipData(null);
+        return;
+      }
+      
+      const balanceValue = param.seriesData.get(balanceSeries) as LineData | undefined;
+      const equityValue = param.seriesData.get(equitySeries) as LineData | undefined;
+      
+      if (balanceValue && equityValue) {
+        const balance = balanceValue.value;
+        const equity = equityValue.value;
+        const pnl = balance - account.accountSize;
+        const time = new Date((param.time as number) * 1000).toLocaleString();
+        
+        setTooltipData({
+          balance,
+          equity,
+          pnl,
+          time,
+          x: param.point.x,
+          y: param.point.y,
+        });
+      }
+    });
     
     chart.timeScale().fitContent();
 
@@ -276,6 +312,8 @@ const BalanceEquityChart = ({ account }: { account: TradingAccount }) => {
     window.addEventListener('resize', handleResize);
     return () => { window.removeEventListener('resize', handleResize); chart.remove(); };
   }, [account]);
+
+  const formatCurrency = (n: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
   return (
     <Card>
@@ -292,7 +330,39 @@ const BalanceEquityChart = ({ account }: { account: TradingAccount }) => {
           </div>
         </div>
       </div>
-      <div ref={chartContainerRef} className="w-full" />
+      <div className="relative">
+        <div ref={chartContainerRef} className="w-full" />
+        
+        {/* Custom Tooltip */}
+        {tooltipData && (
+          <div 
+            ref={tooltipRef}
+            className="absolute z-20 pointer-events-none bg-[#1a1c22] border border-white/10 rounded-lg p-3 shadow-xl"
+            style={{
+              left: Math.min(tooltipData.x, (chartContainerRef.current?.clientWidth || 300) - 160),
+              top: Math.max(10, tooltipData.y - 80),
+            }}
+          >
+            <div className="text-xs text-gray-400 mb-2">{tooltipData.time}</div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-xs text-blue-400">Balance:</span>
+                <span className="text-xs font-bold text-white">{formatCurrency(tooltipData.balance)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-xs text-cyan-400">Equity:</span>
+                <span className="text-xs font-bold text-white">{formatCurrency(tooltipData.equity)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4 pt-1 border-t border-white/10">
+                <span className="text-xs text-gray-400">P&L:</span>
+                <span className={`text-xs font-bold ${tooltipData.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {tooltipData.pnl >= 0 ? '+' : ''}{formatCurrency(tooltipData.pnl)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </Card>
   );
 };
@@ -303,6 +373,7 @@ const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAcc
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+  const [selectedDay, setSelectedDay] = useState<{ date: number; dateStr: string; pnl: number; trades: number } | null>(null);
 
   const { weeklyData, monthDays, totalPnL, totalDays } = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -336,10 +407,6 @@ const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAcc
     const weeks: Array<{ name: string; dateRange: string; pnl: number; trades: number; days: number }> = [];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
-    // Week 1: Days 1-7
-    // Week 2: Days 8-14
-    // Week 3: Days 15-21
-    // Week 4: Days 22-end of month
     const weekRanges = [
       { start: 1, end: 7 },
       { start: 8, end: 14 },
@@ -370,7 +437,6 @@ const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAcc
       });
     });
 
-    // Calculate totals for current month
     let totalPnL = 0;
     let totalDays = 0;
     
@@ -387,40 +453,55 @@ const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAcc
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayNamesShort = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   const goToToday = () => setCurrentMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 
+  const handleDayClick = (day: { date: number | null; pnl: number; trades: number; dateStr: string }) => {
+    if (day.date !== null) {
+      setSelectedDay({ date: day.date, dateStr: day.dateStr, pnl: day.pnl, trades: day.trades });
+    }
+  };
+
+  // Get trades for selected day
+  const selectedDayTrades = selectedDay 
+    ? account.trades.filter(t => {
+        const tradeDate = new Date(t.closeTime || t.openTime).toISOString().split('T')[0];
+        return tradeDate === selectedDay.dateStr;
+      })
+    : [];
+
   return (
     <Card className="!p-0 overflow-hidden">
-      <div className="p-6 border-b border-white/10">
+      <div className="p-4 md:p-6 border-b border-white/10">
         <h3 className="text-lg font-semibold text-white">Daily Summary</h3>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3">
         {/* Calendar */}
-        <div className="lg:col-span-2 p-6 border-r border-white/10">
+        <div className="lg:col-span-2 p-4 md:p-6 lg:border-r border-white/10">
           {/* Month Navigation */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <button onClick={prevMonth} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-                <ChevronLeftIcon className="w-5 h-5 text-gray-400" />
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <div className="flex items-center gap-1 md:gap-2">
+              <button onClick={prevMonth} className="p-1.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <ChevronLeftIcon className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
               </button>
-              <button onClick={nextMonth} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-                <ChevronRightIcon className="w-5 h-5 text-gray-400" />
+              <button onClick={nextMonth} className="p-1.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors">
+                <ChevronRightIcon className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
               </button>
             </div>
-            <h4 className="text-lg font-semibold text-white">
+            <h4 className="text-sm md:text-lg font-semibold text-white">
               {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
             </h4>
-            <button onClick={goToToday} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-gray-400 transition-colors">
+            <button onClick={goToToday} className="px-2 py-1 md:px-3 md:py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs md:text-sm text-gray-400 transition-colors">
               Today
             </button>
           </div>
 
           {/* Summary Header */}
-          <div className="flex items-center gap-4 mb-4 text-sm">
+          <div className="flex items-center gap-2 md:gap-4 mb-4 text-xs md:text-sm">
             <span className="text-gray-400">PnL:</span>
             <span className={`font-bold ${totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {formatCurrency(totalPnL)}
@@ -432,67 +513,154 @@ const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAcc
 
           {/* Day Headers */}
           <div className="grid grid-cols-7 gap-1 mb-2">
-            {dayNames.map(day => (
-              <div key={day} className="text-center text-xs text-gray-500 py-2">{day}</div>
+            {dayNames.map((day, i) => (
+              <div key={day} className="text-center text-[10px] md:text-xs text-gray-500 py-1 md:py-2">
+                <span className="hidden md:inline">{day}</span>
+                <span className="md:hidden">{dayNamesShort[i]}</span>
+              </div>
             ))}
           </div>
 
           {/* Calendar Grid */}
           <div className="grid grid-cols-7 gap-1">
             {monthDays.map((day, i) => (
-              <div
+              <button
                 key={i}
+                onClick={() => handleDayClick(day)}
+                disabled={day.date === null}
                 className={`
-                  aspect-square p-1 rounded-lg text-center flex flex-col justify-between min-h-[70px]
-                  ${day.date === null ? 'bg-transparent' : 'bg-white/5 border border-white/5'}
+                  calendar-day aspect-square p-1 md:p-2 rounded-lg text-center flex flex-col justify-between min-h-[48px] md:min-h-[70px]
+                  ${day.date === null ? 'bg-transparent cursor-default' : 'bg-white/5 border border-white/5 hover:bg-white/10 cursor-pointer transition-colors'}
                   ${day.trades > 0 ? 'border-emerald-500/30' : ''}
+                  ${selectedDay?.date === day.date ? 'ring-2 ring-blue-500' : ''}
                 `}
               >
                 {day.date !== null && (
                   <>
-                    <span className={`text-sm font-medium ${day.pnl > 0 ? 'text-emerald-400' : day.pnl < 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                    <span className={`text-xs md:text-sm font-medium ${day.pnl > 0 ? 'text-emerald-400' : day.pnl < 0 ? 'text-red-400' : 'text-gray-500'}`}>
                       {day.date}
                     </span>
                     {day.trades > 0 && (
-                      <div className="text-[10px] space-y-0.5">
-                        <div className="text-gray-500">{day.trades} ↕</div>
-                        <div className={day.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-                          {formatCurrency(day.pnl)}
+                      <div className="text-[8px] md:text-[10px] space-y-0.5">
+                        <div className="text-gray-500 hidden md:block">{day.trades} ↕</div>
+                        <div className={`${day.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'} truncate`}>
+                          <span className="hidden md:inline">{formatCurrency(day.pnl)}</span>
+                          <span className="md:hidden">{day.pnl >= 0 ? '+' : '-'}</span>
                         </div>
                       </div>
                     )}
                   </>
                 )}
-              </div>
+              </button>
             ))}
           </div>
         </div>
 
-        {/* Weekly Summary - 4 Weeks */}
-        <div className="p-6">
+        {/* Weekly Summary - 4 Weeks (Hidden on mobile when day selected) */}
+        <div className={`p-4 md:p-6 weekly-summary ${selectedDay ? 'hidden lg:block' : ''}`}>
           <h4 className="text-sm text-gray-400 font-medium mb-4">Weekly Summary</h4>
           <div className="space-y-4">
             {weeklyData.map((week, i) => (
               <div key={i} className="pb-4 border-b border-white/5 last:border-0">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-medium text-white">{week.name}</span>
-                  <span className="text-xs text-gray-500">{week.dateRange}</span>
+                  <span className="font-medium text-white text-sm">{week.name}</span>
+                  <span className="text-[10px] md:text-xs text-gray-500">{week.dateRange}</span>
                 </div>
                 {week.trades > 0 ? (
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-xs md:text-sm">
                     <span className={`font-bold ${week.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       PnL: {formatCurrency(week.pnl)}
                     </span>
                     <span className="text-gray-400">Days: {week.days}</span>
                   </div>
                 ) : (
-                  <span className="text-gray-500 text-sm">No trades</span>
+                  <span className="text-gray-500 text-xs md:text-sm">No trades</span>
                 )}
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {/* Day Detail Popup/Modal */}
+      {selectedDay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedDay(null)}>
+          <div 
+            className="w-full max-w-md bg-[#0f1013] border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-white/10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    {new Date(selectedDay.dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                  </h3>
+                  <p className="text-sm text-gray-400 mt-1">
+                    {selectedDay.trades} trade{selectedDay.trades !== 1 ? 's' : ''} • {account.name}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setSelectedDay(null)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <XIcon className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {/* Day Summary */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-white/5 rounded-xl p-4">
+                  <div className="text-sm text-gray-400 mb-1">Day P&L</div>
+                  <div className={`text-2xl font-bold ${selectedDay.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {selectedDay.pnl >= 0 ? '+' : ''}{formatCurrency(selectedDay.pnl)}
+                  </div>
+                </div>
+                <div className="bg-white/5 rounded-xl p-4">
+                  <div className="text-sm text-gray-400 mb-1">Trades</div>
+                  <div className="text-2xl font-bold text-white">{selectedDay.trades}</div>
+                </div>
+              </div>
+
+              {/* Trades List */}
+              {selectedDayTrades.length > 0 ? (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-400 mb-3">Trades</h4>
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    {selectedDayTrades.map(trade => (
+                      <div key={trade.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            trade.pnl >= 0 ? 'bg-emerald-500/20' : 'bg-red-500/20'
+                          }`}>
+                            {trade.pnl >= 0 ? (
+                              <svg className="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
+                            ) : (
+                              <svg className="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium text-white text-sm">{trade.symbol}</div>
+                            <div className="text-xs text-gray-500">{trade.type.toUpperCase()} • {trade.lots} lots</div>
+                          </div>
+                        </div>
+                        <div className={`font-bold text-sm ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {trade.pnl >= 0 ? '+' : ''}{formatCurrency(trade.pnl)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No trades on this day
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 };

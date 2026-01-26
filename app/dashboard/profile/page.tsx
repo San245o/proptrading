@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CalendarIcon, TargetIcon } from '@/components/dashboard/icons';
+import { FancyButton, WalletIconButton } from '@/components/dashboard/FancyButton';
 
 // Local CheckIcon since it's not exported from the icons module
 const CheckIcon = ({ className = "" }: { className?: string }) => (
@@ -331,9 +332,9 @@ export default function ProfilePage() {
                       Eligible traders may request payouts according to the payout cycle associated with their account. 
                       Payouts are subject to verification and compliance checks.
                     </p>
-                    <button className="px-4 py-2 rounded-lg bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 transition-colors">
+                    <FancyButton icon={<WalletIconButton />} variant="blue">
                       Request Payout
-                    </button>
+                    </FancyButton>
                   </div>
                 </div>
               </Card>

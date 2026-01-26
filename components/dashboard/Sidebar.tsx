@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -20,23 +20,38 @@ interface SidebarItemProps {
 }
 
 const SidebarItem = ({ icon: Icon, label, href, isActive }: SidebarItemProps) => {
+  const [isClicked, setIsClicked] = useState(false);
+  const [showRipple, setShowRipple] = useState(false);
+  
+  const handleClick = () => {
+    setIsClicked(true);
+    setShowRipple(true);
+    setTimeout(() => setIsClicked(false), 300);
+    setTimeout(() => setShowRipple(false), 600);
+  };
+
   return (
     <Link 
       href={href}
+      onClick={handleClick}
       className={`
-        relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 group
+        relative flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-300 group overflow-hidden
         ${isActive ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:text-white hover:bg-white/10'}
       `}
     >
-      <Icon className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" />
+      {/* Ripple Effect */}
+      {showRipple && <div className="sidebar-ripple" />}
+      
+      <Icon className={`w-6 h-6 transition-transform duration-300 group-hover:scale-110 ${isClicked ? 'sidebar-icon-click' : ''}`} />
       
       {/* Tooltip / Popup Text */}
       <span className="
         absolute left-full ml-4 px-3 py-1.5 
-        bg-[#1a1c22] border border-white/10 text-white text-sm rounded-lg 
+        bg-[#1a1c22] border border-white/10 text-white text-sm rounded-lg font-medium
         opacity-0 translate-x-[-10px] pointer-events-none
         group-hover:opacity-100 group-hover:translate-x-0
         transition-all duration-200 z-50 whitespace-nowrap
+        shadow-lg shadow-black/20
       ">
         {label}
       </span>

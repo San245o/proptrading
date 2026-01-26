@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { InfoIcon, TargetIcon, CalendarIcon, TrendingUpIcon } from '@/components/dashboard/icons';
 import { useSimulation } from '@/app/context/SimulationContext';
+import { FancyButton, CreditCardIcon } from '@/components/dashboard/FancyButton';
 
 // --- Stagger Animation Hook ---
 function useStaggerMount(itemCount: number, baseDelay = 60) {
@@ -436,23 +437,23 @@ export default function NewChallengePage() {
                   <button
                     onClick={handlePayment}
                     disabled={!agreedToTerms || isProcessing}
-                    className={`w-full py-3.5 rounded-xl font-semibold text-white transition-all ${
-                      agreedToTerms && !isProcessing
-                        ? 'bg-blue-500 hover:bg-blue-600 cursor-pointer'
-                        : 'bg-gray-600 cursor-not-allowed opacity-50'
+                    className={`btn-fancy btn-fancy-blue w-full justify-center ${
+                      !agreedToTerms || isProcessing ? 'opacity-50 pointer-events-none' : ''
                     }`}
                   >
-                    {isProcessing ? (
-                      <span className="flex items-center justify-center gap-2">
+                    <span className="btn-ball">
+                      {isProcessing ? (
                         <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
-                        Processing...
-                      </span>
-                    ) : (
-                      'Continue to Payment'
-                    )}
+                      ) : (
+                        <CreditCardIcon />
+                      )}
+                    </span>
+                    <span className="relative z-10 font-medium">
+                      {isProcessing ? 'Processing...' : 'Continue to Payment'}
+                    </span>
                   </button>
                 </Card>
 

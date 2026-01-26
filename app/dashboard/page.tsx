@@ -4,6 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { TrophyIcon, PlusIcon, ChevronRightIcon, TrendingUpIcon, TrendingDownIcon } from '@/components/dashboard/icons';
 import { useSimulation } from '@/app/context/SimulationContext';
+import { Sparkline, generateSparklineData } from '@/components/dashboard/Sparkline';
+import { FancyButton, PlusIconButton, WalletIconButton } from '@/components/dashboard/FancyButton';
 
 // --- Stagger Animation Hook ---
 function useStaggerMount(itemCount: number, baseDelay = 80) {
@@ -166,20 +168,16 @@ export default function DashboardPage() {
     <div className="space-y-6 pb-8">
       {/* Header */}
       <FadeInItem visible={visible[0]}>
-        <header className="flex items-center justify-between mb-8">
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
               Dashboard Overview
             </h1>
             <p className="text-gray-400 mt-2">Welcome back, {state.userProfile.name}.</p>
           </div>
-          <Link
-            href="/dashboard/new-challenge"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors"
-          >
-            <PlusIcon className="w-5 h-5" />
+          <FancyButton href="/dashboard/new-challenge" icon={<PlusIconButton />}>
             New Challenge
-          </Link>
+          </FancyButton>
         </header>
       </FadeInItem>
       
@@ -187,7 +185,10 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <FadeInItem visible={visible[1]}>
           <CardInner className="!p-5">
-            <div className="text-sm text-gray-400 mb-1">Total Balance</div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-400 mb-1">Total Balance</div>
+              <Sparkline data={generateSparklineData(totalBalance, true)} width={40} height={16} />
+            </div>
             <div className="text-2xl font-bold text-white">{formatCurrency(totalBalance)}</div>
             <div className="text-xs text-gray-500 mt-1">{accounts.length} account{accounts.length !== 1 ? 's' : ''}</div>
           </CardInner>
@@ -195,7 +196,10 @@ export default function DashboardPage() {
 
         <FadeInItem visible={visible[2]}>
           <CardInner className="!p-5">
-            <div className="text-sm text-gray-400 mb-1">Total P&L</div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-400 mb-1">Total P&L</div>
+              <Sparkline data={generateSparklineData(totalPnL, totalPnL >= 0)} width={40} height={16} />
+            </div>
             <div className={`text-2xl font-bold ${totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {totalPnL >= 0 ? '+' : ''}{formatCurrency(totalPnL)}
             </div>
@@ -205,7 +209,10 @@ export default function DashboardPage() {
 
         <FadeInItem visible={visible[3]}>
           <CardInner className="!p-5">
-            <div className="text-sm text-gray-400 mb-1">Win Rate</div>
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-400 mb-1">Win Rate</div>
+              <Sparkline data={generateSparklineData(overallWinRate, overallWinRate >= 50)} width={40} height={16} />
+            </div>
             <div className="text-2xl font-bold text-white">{overallWinRate.toFixed(1)}%</div>
             <div className="text-xs text-gray-500 mt-1">{totalWins} wins / {totalTrades - totalWins} losses</div>
           </CardInner>
@@ -357,11 +364,13 @@ export default function DashboardPage() {
                 <span className="font-mono text-amber-400 font-bold">{formatCurrency(state.userProfile.pendingPayouts)}</span>
               </div>
               <div className="mt-4 pt-4 border-t border-white/5">
-                <Link href="/dashboard/profile">
-                  <button className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-medium transition-colors text-white">
-                    Request Payout
-                  </button>
-                </Link>
+                <FancyButton 
+                  href="/dashboard/profile" 
+                  className="w-full justify-center"
+                  icon={<WalletIconButton />}
+                >
+                  Request Payout
+                </FancyButton>
               </div>
             </div>
           </CardInner>
@@ -380,7 +389,7 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-3">
               {recentTrades.map(trade => (
-                <div key={trade.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
+                <div key={trade.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       trade.pnl >= 0 ? 'bg-emerald-500/20' : 'bg-red-500/20'
@@ -392,17 +401,30 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <div>
-                      <div className="font-medium text-white">{trade.symbol}</div>
-                      <div className="text-xs text-gray-500">
-                        {trade.type.toUpperCase()} • {trade.lots} lots
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-white">{trade.symbol}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                          trade.type === 'buy' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {trade.type === 'buy' ? '↑ LONG' : '↓ SHORT'}
+                        </span>
                       </div>
+                      <div className="text-xs text-gray-500">{trade.lots} lots</div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className={`font-bold ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {trade.pnl >= 0 ? '+' : ''}{formatCurrency(trade.pnl)}
+                  <div className="text-right flex items-center gap-3">
+                    <Sparkline data={generateSparklineData(trade.pnl, trade.pnl >= 0, 8)} width={36} height={14} />
+                    <div>
+                      <div className={`font-bold flex items-center gap-1 ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {trade.pnl >= 0 ? (
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
+                        ) : (
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        )}
+                        {formatCurrency(Math.abs(trade.pnl))}
+                      </div>
+                      <div className="text-xs text-gray-500">{trade.accountName}</div>
                     </div>
-                    <div className="text-xs text-gray-500">{trade.accountName}</div>
                   </div>
                 </div>
               ))}
