@@ -103,9 +103,11 @@ export default function Pricing() {
 
         {/* Additional Info */}
         <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-900/20 to-transparent p-6">
+          <div className="relative overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-900/30 via-emerald-900/10 to-transparent p-6 transition-all hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent opacity-60 pointer-events-none" />
+            <div className="relative z-10">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 border border-emerald-500/30">
                 <span className="text-lg font-bold text-emerald-400">1</span>
               </div>
               <h4 className="text-xl font-bold text-white">One-Step Challenge</h4>
@@ -132,13 +134,16 @@ export default function Pricing() {
                 <span><strong className="text-white/80">Max 3% risk per trade</strong> — 20% total exposure</span>
               </li>
             </ul>
-            <div className="mt-4 rounded-lg bg-emerald-500/10 p-3">
+            <div className="mt-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
               <p className="text-xs text-emerald-400/80"><strong>Best for:</strong> Traders who want a faster path to funding with a single evaluation phase.</p>
             </div>
+            </div>
           </div>
-          <div className="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-900/20 to-transparent p-6">
+          <div className="relative overflow-hidden rounded-xl border border-blue-500/30 bg-gradient-to-br from-blue-900/30 via-blue-900/10 to-transparent p-6 transition-all hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/10">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent opacity-60 pointer-events-none" />
+            <div className="relative z-10">
             <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 border border-blue-500/30">
                 <span className="text-lg font-bold text-blue-400">2</span>
               </div>
               <h4 className="text-xl font-bold text-white">Two-Step Challenge</h4>
@@ -165,8 +170,9 @@ export default function Pricing() {
                 <span><strong className="text-white/80">Max 3% risk per trade</strong> — across all open positions</span>
               </li>
             </ul>
-            <div className="mt-4 rounded-lg bg-blue-500/10 p-3">
+            <div className="mt-4 rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
               <p className="text-xs text-blue-400/80"><strong>Best for:</strong> Traders who prefer lower targets per phase with a fixed drawdown structure.</p>
+            </div>
             </div>
           </div>
         </div>

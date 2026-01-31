@@ -375,17 +375,22 @@ const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAcc
   });
   
   // Initialize selectedDay to today's date
-  const [selectedDay, setSelectedDay] = useState<{ date: number; dateStr: string; pnl: number; trades: number } | null>(() => {
+  const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
     const today = new Date();
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const dayData = account.tradingDays[dateStr];
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  });
+  
+  // Dynamically compute selectedDay data from account.tradingDays so it updates when trades are added
+  const selectedDay = useMemo(() => {
+    const dayData = account.tradingDays[selectedDateStr];
+    const dateParts = selectedDateStr.split('-');
     return {
-      date: today.getDate(),
-      dateStr,
+      date: parseInt(dateParts[2]),
+      dateStr: selectedDateStr,
       pnl: dayData?.pnl || 0,
       trades: dayData?.trades || 0,
     };
-  });
+  }, [selectedDateStr, account.tradingDays]);
 
   const { weeklyData, monthDays, totalPnL, totalDays } = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -473,7 +478,7 @@ const DailySummaryCalendar = ({ account, formatCurrency }: { account: TradingAcc
 
   const handleDayClick = (day: { date: number | null; pnl: number; trades: number; dateStr: string }) => {
     if (day.date !== null) {
-      setSelectedDay({ date: day.date, dateStr: day.dateStr, pnl: day.pnl, trades: day.trades });
+      setSelectedDateStr(day.dateStr);
     }
   };
 

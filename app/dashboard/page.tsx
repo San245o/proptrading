@@ -410,11 +410,38 @@ export default function DashboardPage() {
                 <svg width="200" height="200" viewBox="0 0 200 200">
                   {(() => {
                     const total = instrumentStats.reduce((sum, i) => sum + i.volume, 0) || 1;
-                    let cumulativePercent = 0;
                     const colors = ['#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#8b5cf6'];
+                    const outerRadius = 80;
+                    const innerRadius = 50;
+                    const cx = 100;
+                    const cy = 100;
                     
+                    // Check if single instrument at 100%
+                    const nonZeroInstruments = instrumentStats.filter(i => i.volume > 0);
+                    if (nonZeroInstruments.length === 1) {
+                      // Render full donut circle for single instrument
+                      return (
+                        <>
+                          <circle
+                            cx={cx}
+                            cy={cy}
+                            r={(outerRadius + innerRadius) / 2}
+                            fill="none"
+                            stroke={colors[instrumentStats.findIndex(i => i.volume > 0) % colors.length]}
+                            strokeWidth={outerRadius - innerRadius}
+                            className="transition-all duration-500 hover:opacity-80"
+                            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                          />
+                        </>
+                      );
+                    }
+                    
+                    // Multiple instruments - render pie slices
+                    let cumulativePercent = 0;
                     return instrumentStats.map((inst, index) => {
                       const percent = (inst.volume / total) * 100;
+                      if (percent === 0) return null;
+                      
                       const startAngle = cumulativePercent * 3.6 - 90;
                       cumulativePercent += percent;
                       const endAngle = cumulativePercent * 3.6 - 90;
@@ -422,11 +449,6 @@ export default function DashboardPage() {
                       const startRad = (startAngle * Math.PI) / 180;
                       const endRad = (endAngle * Math.PI) / 180;
                       const largeArc = percent > 50 ? 1 : 0;
-                      
-                      const outerRadius = 80;
-                      const innerRadius = 50;
-                      const cx = 100;
-                      const cy = 100;
                       
                       const x1 = cx + outerRadius * Math.cos(startRad);
                       const y1 = cy + outerRadius * Math.sin(startRad);
